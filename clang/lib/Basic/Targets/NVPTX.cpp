@@ -283,8 +283,8 @@ void NVPTXTargetInfo::getTargetDefines(const LangOptions &Opts,
       case OffloadArch::SM_90:
       case OffloadArch::SM_90a:
         return "900";
-      case OffloadArch::SM_next:
-        return llvm::itostr(Opts.CUDANextSM * 10);
+      case OffloadArch::SM_custom:
+        return llvm::itostr(CUDACustomSMToArchID(Opts.CUDACustomSM));
       }
       llvm_unreachable("unhandled OffloadArch");
     }();
