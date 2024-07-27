@@ -76,8 +76,10 @@ using range_value_t = iter_value_t<iterator_t<_Rp>>;
 template <range _Rp>
 using range_reference_t = iter_reference_t<iterator_t<_Rp>>;
 
+#  if _LIBCPP_STD_VER >= 23
 template <range _Rp>
 using range_const_reference_t = iter_const_reference_t<iterator_t<_Rp>>;
+#  endif
 
 template <range _Rp>
 using range_rvalue_reference_t = iter_rvalue_reference_t<iterator_t<_Rp>>;
