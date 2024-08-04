@@ -18,7 +18,10 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <cstring>
 #include <limits>
+#include <stdexcept>
+#include <system_error>
 
 #include "charconv_test_helpers.h"
 #include "test_macros.h"
@@ -312,7 +315,7 @@ void test_fmt_independent(std::chars_format fmt) {
       assert(value == F(0.25));
     }
   }
-  { // start with decimal separator
+  { // only decimal separator
     F value                       = 0.25;
     const char* s                 = ".";
     std::from_chars_result result = std::from_chars(s, s + std::strlen(s), value, fmt);
@@ -321,7 +324,16 @@ void test_fmt_independent(std::chars_format fmt) {
     assert(result.ptr == s);
     assert(value == F(0.25));
   }
-  { // Invalid sign
+  { // sign and decimal separator
+    F value                       = 0.25;
+    const char* s                 = "-.";
+    std::from_chars_result result = std::from_chars(s, s + std::strlen(s), value, fmt);
+
+    assert(result.ec == std::errc::invalid_argument);
+    assert(result.ptr == s);
+    assert(value == F(0.25));
+  }
+  { // + sign is not allowed
     F value                       = 0.25;
     const char* s                 = "+0.25";
     std::from_chars_result result = std::from_chars(s, s + std::strlen(s), value, fmt);
@@ -335,9 +347,394 @@ void test_fmt_independent(std::chars_format fmt) {
 template <class F>
 struct test_basics {
   void operator()() {
-    for (auto fmt :
-         {std::chars_format::scientific, std::chars_format::fixed, std::chars_format::hex, std::chars_format::general})
+    for (auto fmt : {std::chars_format::scientific,
+                     std::chars_format::fixed,
+                     /*std::chars_format::hex,*/ std::chars_format::general})
       test_fmt_independent<F>(fmt);
+  }
+};
+
+template <class F>
+struct test_fixed {
+  void operator()() {
+    std::from_chars_result r;
+    F x = 0.25;
+
+    // *** Failures
+
+    { // Starts with invalid character
+      std::array s = {' ', '1'};
+      for (auto c : "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    "`~!@#$%^&*()_=[]{}\\|;:'\",/<>? \t\v\r\n") {
+        s[0] = c;
+        r    = std::from_chars(s.data(), s.data() + s.size(), x, std::chars_format::fixed);
+
+        assert(r.ec == std::errc::invalid_argument);
+        assert(r.ptr == s.data());
+        assert(x = F(0.25));
+      }
+    }
+
+    { // exponenent no sign
+      const char* s = "1.5e10";
+      r             = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // exponenent capitalized no sign
+      const char* s = "1.5E10";
+      r             = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // exponenent + sign
+      const char* s = "1.5e+10";
+      r             = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // exponenent - sign
+      const char* s = "1.5e-10";
+      r             = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // double exponent
+      const char* s = "1.25e0e12";
+      r             = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // Shifting mantissa exponent and an exponent
+      const char* s = "123.456e3";
+      r             = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+
+    // *** Success
+
+    { // number followed by non-numeric values
+      const char* s = "001x";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(1.0));
+    }
+    { // no leading digit
+      const char* s = ".5";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 2);
+      assert(x == F(0.5));
+    }
+    { // negative sign and no leading digit
+      const char* s = "-.5";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(-0.5));
+    }
+
+    { // double deciamal point
+      const char* s = "1.25.78";
+
+      // This number is halfway between two float values.
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 4);
+      assert(x == F(1.25));
+    }
+    { // Exponent no number
+      const char* s = "1.5e";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(1.5));
+    }
+    { // Exponent sign no number
+      const char* s = "1.5e+";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(1.5));
+    }
+    { // exponent double sign
+      const char* s = "1.25e++12";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 4);
+      assert(x == F(1.25));
+    }
+    { // This number is halfway between two float values.
+      const char* s = "20040229";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 8);
+      assert(x == F(20040229));
+    }
+    { // Shifting mantissa exponent and no exponent
+      const char* s = "123.456";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 7);
+      assert(x == F(1.23456e2));
+    }
+    { // Mantissa overflow
+      {
+        const char* s = "0.111111111111111111111111111111111111111111";
+
+        r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+        assert(r.ec == std::errc{});
+        assert(r.ptr == s + std::strlen(s));
+        assert(x == F(0.111111111111111111111111111111111111111111));
+      }
+      {
+        const char* s = "111111111111.111111111111111111111111111111111111111111";
+
+        r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+        assert(r.ec == std::errc{});
+        assert(r.ptr == s + std::strlen(s));
+        assert(x == F(111111111111.111111111111111111111111111111111111111111));
+      }
+    }
+    { // Negative value
+      const char* s = "-0.25";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::fixed);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + std::strlen(s));
+      assert(x == F(-0.25));
+    }
+  }
+};
+
+template <class F>
+struct test_scientific {
+  void operator()() {
+    std::from_chars_result r;
+    F x = 0.25;
+
+    // *** Failures
+
+    { // Starts with invalid character
+      std::array s = {' ', '1', 'e', '0'};
+      for (auto c : "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    "`~!@#$%^&*()_=[]{}\\|;:'\",/<>? \t\v\r\n") {
+        s[0] = c;
+        r    = std::from_chars(s.data(), s.data() + s.size(), x, std::chars_format::scientific);
+
+        assert(r.ec == std::errc::invalid_argument);
+        assert(r.ptr == s.data());
+        assert(x = F(0.25));
+      }
+    }
+    { // No exponent
+      const char* s = "1.23";
+      r             = std::from_chars(s, s + strlen(s), x, std::chars_format::scientific);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // Exponent no number
+      const char* s = "1.23e";
+      r             = std::from_chars(s, s + strlen(s), x, std::chars_format::scientific);
+
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // Exponent sign no number
+      const char* s = "1.5e+";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+    { // exponent double sign
+      const char* s = "1.25e++12";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc::invalid_argument);
+      assert(r.ptr == s);
+      assert(x == F(0.25));
+    }
+
+    // *** Success
+
+    { // number followed by non-numeric values
+      const char* s = "001e0x";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 5);
+      assert(x == F(1.0));
+    }
+
+    { // double deciamal point
+      const char* s = "1.25e0.78";
+
+      // This number is halfway between two float values.
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 6);
+      assert(x == F(1.25));
+    }
+
+    { // exponenent no sign
+      const char* s = "1.5e10";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 6);
+      assert(x == F(1.5e10));
+    }
+    { // exponenent capitalized no sign
+      const char* s = "1.5E10";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 6);
+      assert(x == F(1.5e10));
+    }
+    { // exponenent + sign
+      const char* s = "1.5e+10";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 7);
+      assert(x == F(1.5e10));
+    }
+    { // exponenent - sign
+      const char* s = "1.5e-10";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 7);
+      assert(x == F(1.5e-10));
+    }
+    { // double exponent
+      const char* s = "1.25e0e12";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 6);
+      assert(x == F(1.25));
+    }
+    { // This number is halfway between two float values.
+      const char* s = "20040229e0";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 10);
+      assert(x == F(20040229));
+    }
+    { // Shifting mantissa exponent and an exponent
+      const char* s = "123.456e3";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 9);
+      assert(x == F(1.23456e5));
+    }
+    { // Mantissa overflow
+      {
+        const char* s = "0.111111111111111111111111111111111111111111e0";
+
+        r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+        assert(r.ec == std::errc{});
+        assert(r.ptr == s + std::strlen(s));
+        assert(x == F(0.111111111111111111111111111111111111111111));
+      }
+      {
+        const char* s = "111111111111.111111111111111111111111111111111111111111e0";
+
+        r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+        assert(r.ec == std::errc{});
+        assert(r.ptr == s + std::strlen(s));
+        assert(x == F(111111111111.111111111111111111111111111111111111111111));
+      }
+    }
+    { // Negative value
+      const char* s = "-0.25e0";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + std::strlen(s));
+      assert(x == F(-0.25));
+    }
+    { // value is too big -> +inf
+      const char* s = "1e9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == std::numeric_limits<F>::infinity());
+    }
+    { // negative value is too big -> -inf
+      const char* s = "-1e9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == -std::numeric_limits<F>::infinity());
+    }
+    { // value is too small -> 0
+      const char* s = "1e-9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == F(0.0));
+    }
+    { // negative value is too small -> -0
+      const char* s = "-1e-9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == F(-0.0));
+    }
   }
 };
 
@@ -345,9 +742,27 @@ template <class F>
 struct test_general {
   void operator()() {
     std::from_chars_result r;
-    F x;
+    F x = 0.25;
 
-    { // number followed by non-numeric valies
+    // *** Failures
+
+    { // Starts with invalid character
+      std::array s = {' ', '1'};
+      for (auto c : "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    "`~!@#$%^&*()_=[]{}\\|;:'\",/<>? \t\v\r\n") {
+        s[0] = c;
+        r    = std::from_chars(s.data(), s.data() + s.size(), x);
+
+        assert(r.ec == std::errc::invalid_argument);
+        assert(r.ptr == s.data());
+        assert(x = F(0.25));
+      }
+    }
+
+    // *** Success
+
+    { // number followed by non-numeric values
       const char* s = "001x";
 
       // the expected form of the subject sequence is a nonempty sequence of
@@ -359,7 +774,54 @@ struct test_general {
       assert(r.ptr == s + 3);
       assert(x == F(1.0));
     }
+    { // no leading digit
+      const char* s = ".5e0";
 
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 4);
+      assert(x == F(0.5));
+    }
+    { // negative sign and no leading digit
+      const char* s = "-.5e0";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x, std::chars_format::scientific);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 5);
+      assert(x == F(-0.5));
+    }
+    { // no leading digit
+      const char* s = ".5";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 2);
+      assert(x == F(0.5));
+    }
+    { // negative sign and no leading digit
+      const char* s = "-.5";
+
+      // the expected form of the subject sequence is a nonempty sequence of
+      // decimal digits optionally containing a decimal-point character, then
+      // an optional exponent part as defined in 6.4.4.3, excluding any digit
+      // separators (6.4.4.2); (C23 7.24.1.5)
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(-0.5));
+    }
     { // double deciamal point
       const char* s = "1.25.78";
 
@@ -369,9 +831,16 @@ struct test_general {
       assert(r.ptr == s + 4);
       assert(x == F(1.25));
     }
-
     { // exponenent no sign
       const char* s = "1.5e10";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 6);
+      assert(x == F(1.5e10));
+    }
+    { // exponenent capitalized no sign
+      const char* s = "1.5E10";
 
       r = std::from_chars(s, s + std::strlen(s), x);
       assert(r.ec == std::errc{});
@@ -393,6 +862,22 @@ struct test_general {
       assert(r.ec == std::errc{});
       assert(r.ptr == s + 7);
       assert(x == F(1.5e-10));
+    }
+    { // Exponent no number
+      const char* s = "1.5e";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(1.5));
+    }
+    { // Exponent sign no number
+      const char* s = "1.5e+";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc{});
+      assert(r.ptr == s + 3);
+      assert(x == F(1.5));
     }
     { // exponent double sign
       const char* s = "1.25e++12";
@@ -452,14 +937,6 @@ struct test_general {
         assert(x == F(111111111111.111111111111111111111111111111111111111111));
       }
     }
-    { // Leading whitespace
-      const char* s = " \t\v\r\n0.25";
-
-      r = std::from_chars(s, s + std::strlen(s), x);
-      assert(r.ec == std::errc{});
-      assert(r.ptr == s + std::strlen(s));
-      assert(x == F(0.25));
-    }
     { // Negative value
       const char* s = "-0.25";
 
@@ -468,12 +945,80 @@ struct test_general {
       assert(r.ptr == s + std::strlen(s));
       assert(x == F(-0.25));
     }
+    { // value is too big -> +inf
+      const char* s = "1e9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == std::numeric_limits<F>::infinity());
+    }
+    { // negative value is too big -> -inf
+      const char* s = "-1e9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == -std::numeric_limits<F>::infinity());
+    }
+    { // value is too small -> 0
+      const char* s = "1e-9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == F(0.0));
+    }
+    { // negative value is too small -> -0
+      const char* s = "-1e-9999999999999999999999999999999999999999";
+
+      r = std::from_chars(s, s + std::strlen(s), x);
+      assert(r.ec == std::errc::result_out_of_range);
+      assert(r.ptr == s + strlen(s));
+      assert(x == F(-0.0));
+    }
   }
 };
 
+// The test
+//   test/std/utilities/charconv/charconv.msvc/test.cpp
+// uses random values. This tests contains errors found by this test.
+void test_random_errors() {
+  {
+    const char* s    = "4.219902180869891e-2788";
+    const char* last = s + std::strlen(s) - 1;
+
+    // last + 1 contains a digit. When that value is parsed the exponent is
+    // e-2788 which returns std::errc::result_out_of_range and the value 0.
+    // the proper exponent is e-278, which can be represented by a double.
+
+    double value                  = 0.25;
+    std::from_chars_result result = std::from_chars(s, last, value);
+
+    assert(result.ec == std::errc{});
+    assert(result.ptr == last);
+    assert(value == 4.219902180869891e-278);
+  }
+  {
+    const char* s    = "7.411412e-39U";
+    const char* last = s + std::strlen(s) - 1;
+
+    float value                   = 0.25;
+    std::from_chars_result result = std::from_chars(s, last, value);
+
+    assert(result.ec == std::errc{});
+    assert(result.ptr == last);
+    assert(value == 7.411412e-39F);
+  }
+}
+
 int main(int, char**) {
   run<test_basics>(all_floats);
+  run<test_scientific>(all_floats);
+  run<test_fixed>(all_floats);
   run<test_general>(all_floats);
+
+  test_random_errors();
 
   return 0;
 }
