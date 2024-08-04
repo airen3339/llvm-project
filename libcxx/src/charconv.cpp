@@ -77,12 +77,12 @@ to_chars_result to_chars(char* __first, char* __last, long double __value, chars
 
 from_chars_result
 __from_chars_floating_point(const char* __first, const char* __last, float& __value, chars_format __fmt) {
-  return from_chars_floating_point<float>(__first, __last, __value, __fmt);
+  return std::__from_chars_floating_point<float>(__first, __last, __value, __fmt);
 }
 
 from_chars_result
 __from_chars_floating_point(const char* __first, const char* __last, double& __value, chars_format __fmt) {
-  return from_chars_floating_point<double>(__first, __last, __value, __fmt);
+  return std::__from_chars_floating_point<double>(__first, __last, __value, __fmt);
 }
 
 _LIBCPP_END_NAMESPACE_STD

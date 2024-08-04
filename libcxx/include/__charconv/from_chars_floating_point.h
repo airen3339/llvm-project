@@ -31,10 +31,10 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 #if _LIBCPP_STD_VER >= 17
 
-_LIBCPP_EXPORTED_FROM_ABI from_chars_result
+_LIBCPP_AVAILABILITY_FROM_CHARS_FLOATING_POINT _LIBCPP_EXPORTED_FROM_ABI from_chars_result
 __from_chars_floating_point(const char* __first, const char* __last, float& __value, chars_format __fmt);
 
-_LIBCPP_EXPORTED_FROM_ABI from_chars_result
+_LIBCPP_AVAILABILITY_FROM_CHARS_FLOATING_POINT _LIBCPP_EXPORTED_FROM_ABI from_chars_result
 __from_chars_floating_point(const char* __first, const char* __last, double& __value, chars_format __fmt);
 
 _LIBCPP_HIDE_FROM_ABI inline from_chars_result
