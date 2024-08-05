@@ -777,8 +777,8 @@ CompareSCEVComplexity(EquivalenceClasses<const SCEV *> &EqCacheSCEV,
 /// results from this routine.  In other words, we don't want the results of
 /// this to depend on where the addresses of various SCEV objects happened to
 /// land in memory.
-static void GroupByComplexity(MutableArrayRef<const SCEV *> Ops,
-                              LoopInfo *LI, DominatorTree &DT) {
+static void GroupByComplexity(MutableArrayRef<const SCEV *> Ops, LoopInfo *LI,
+                              DominatorTree &DT) {
   if (Ops.size() < 2) return;  // Noop
 
   EquivalenceClasses<const SCEV *> EqCacheSCEV;
