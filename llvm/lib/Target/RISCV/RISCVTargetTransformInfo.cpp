@@ -1135,9 +1135,7 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
       MVT VecVT = DstLT.second.changeVectorElementType(ElementVT);
       Cost += getRISCVInstructionCost(FNCVT, VecVT, CostKind);
       if ((SrcEltSize >> 1) > DstEltSize) {
-        VectorType *VecTy = VectorType::get(
-            IntegerType::get(Dst->getContext(), SrcEltSize >> 1),
-            cast<VectorType>(Dst)->getElementCount());
+        Type *VecTy = EVT(VecVT).getTypeForEVT(Dst->getContext());
         Cost +=
             getCastInstrCost(Instruction::Trunc, Dst, VecTy, CCH, CostKind, I);
       }
