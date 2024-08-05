@@ -18,6 +18,7 @@
 #include <charconv>
 #include <concepts>
 #include <limits>
+#include <cstring>
 #include <type_traits>
 
 // Included for the _Floating_type_traits class
