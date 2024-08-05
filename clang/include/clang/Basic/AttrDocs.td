@@ -6763,16 +6763,15 @@ attribute requires a string literal argument to identify the handle being releas
 def UnsafeBufferUsageDocs : Documentation {
   let Category = DocCatFunction;
   let Content = [{
-The attribute ``[[clang::unsafe_buffer_usage]]`` should be placed on functions or
-struct fields that are buffers, that must to be avoided as they are prone to 
-buffer overflows. It is designed to work together with the off-by-default compiler 
-warning ``-Wunsafe-buffer-usage``to help codebases transition away from raw pointer 
-based buffer management, in favor of safer abstractions such as C++20 ``std::span``. 
-The attribute causes ``-Wunsafe-buffer-usage`` to warn on every use of the function or 
-the field it is attached to, and it may enable ``-Wunsafe-buffer-usage`` to emit 
-automatic fix-it hints which would help the user replace the use of unsafe 
-functions(/fields) with safe alternatives, though the attribute can be used even when 
-the fix can't be automated.
+The attribute ``[[clang::unsafe_buffer_usage]]`` should be placed on functions
+that need to be avoided as they are prone to buffer overflows or unsafe buffer
+struct fields. It is designed to work together with the off-by-default compiler
+warning ``-Wunsafe-buffer-usage``to help codebases transition away from raw pointer
+based buffer management, in favor of safer abstractions such as C++20 ``std::span``.
+The attribute causes ``-Wunsafe-buffer-usage`` to warn on every use of the function or
+the field it is attached to, and it may also lead to emission of automatic fix-it
+hints which would help the user replace the use of unsafe functions(/fields) with safe
+alternatives, though the attribute can be used even when the fix can't be automated.
 
 Attribute attached to functions:
 
@@ -6844,23 +6843,24 @@ Attribute attached to fields:
 The attribute should only be attached to struct fields, if the fields can not be
 updated to a safe type with bounds check, such as std::span. In other words, the
 buffers prone to unsafe accesses should always be updated to use safe containers/views
-and attaching the attribute must be last resort when such an update is infeasible. 
+and attaching the attribute must be last resort when such an update is infeasible.
 
-The attribute can be placed on individual fields or a set of them as shown below.	
+The attribute can be placed on individual fields or a set of them as shown below.
 .. code-block:: c++
 
   struct A {
     [[clang::unsafe_buffer_usage]]
     int *ptr1;
-  
+
     [[clang::unsafe_buffer_usage]]
     int *ptr2, buf[10];
 
+    [[clang::unsafe_buffer_usage]]
     size_t sz;
   };
 
-Here, every read/write to the fields ptr1, ptr2 and buf will trigger a warning that the
-field is marked unsafe due to unsafe-buffer operations on it.
+Here, every read/write to the fields ptr1, ptr2, buf and sz will trigger a warning that the
+field has been explcitly marked as unsafe due to unsafe-buffer operations.
 
   }];
 }

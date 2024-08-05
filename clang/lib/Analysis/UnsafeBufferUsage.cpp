@@ -926,7 +926,7 @@ public:
 /// A call of a function or method that performs unchecked buffer operations
 /// over one of its pointer parameters.
 class UnsafeBufferUsageAttrGadget : public WarningGadget {
-  constexpr static const char *const OpTag = "call_expr";
+  constexpr static const char *const OpTag = "attr_expr";
   const Expr *Op;
 
 public:
@@ -939,16 +939,14 @@ public:
   }
 
   static Matcher matcher() {
-    auto HasUnsafeFielDecl = 
-        member(fieldDecl(allOf(
-               anyOf(hasPointerType(), hasArrayType()),
-               hasAttr(attr::UnsafeBufferUsage))));
- 
+    auto HasUnsafeFielDecl =
+        member(fieldDecl(hasAttr(attr::UnsafeBufferUsage)));
+
     auto HasUnsafeFnDecl =
         callee(functionDecl(hasAttr(attr::UnsafeBufferUsage)));
 
-    return stmt(expr(anyOf(callExpr(HasUnsafeFnDecl).bind(OpTag), 
-            memberExpr(HasUnsafeFielDecl).bind(OpTag))));
+    return stmt(expr(anyOf(callExpr(HasUnsafeFnDecl).bind(OpTag),
+                           memberExpr(HasUnsafeFielDecl).bind(OpTag))));
   }
 
   void handleUnsafeOperation(UnsafeBufferUsageHandler &Handler,
@@ -966,12 +964,12 @@ public:
 /// perform buffer operations that depend on the correctness of the parameters.
 class UnsafeBufferUsageCtorAttrGadget : public WarningGadget {
   constexpr static const char *const OpTag = "cxx_construct_expr";
-  const Expr *Op;
+  const CXXConstructExpr *Op;
 
 public:
   UnsafeBufferUsageCtorAttrGadget(const MatchFinder::MatchResult &Result)
       : WarningGadget(Kind::UnsafeBufferUsageCtorAttr),
-        Op(Result.Nodes.getNodeAs<Expr>(OpTag)) {}
+        Op(Result.Nodes.getNodeAs<CXXConstructExpr>(OpTag)) {}
 
   static bool classof(const Gadget *G) {
     return G->getKind() == Kind::UnsafeBufferUsageCtorAttr;
