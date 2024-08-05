@@ -1628,7 +1628,9 @@ public:
       const Value *Mask = Args[3];
       const Value *EVL = Args[4];
       bool VarMask = !isa<Constant>(Mask) || !isa<Constant>(EVL);
-      Align Alignment = I->getParamAlign(1).valueOrOne();
+      Type *EltTy = cast<VectorType>(Data->getType())->getElementType();
+      Align Alignment =
+          I->getParamAlign(1).value_or(thisT()->DL.getABITypeAlign(EltTy));
       return thisT()->getStridedMemoryOpCost(Instruction::Store,
                                              Data->getType(), Ptr, VarMask,
                                              Alignment, CostKind, I);
@@ -1638,7 +1640,9 @@ public:
       const Value *Mask = Args[2];
       const Value *EVL = Args[3];
       bool VarMask = !isa<Constant>(Mask) || !isa<Constant>(EVL);
-      Align Alignment = I->getParamAlign(0).valueOrOne();
+      Type *EltTy = cast<VectorType>(RetTy)->getElementType();
+      Align Alignment =
+          I->getParamAlign(0).value_or(thisT()->DL.getABITypeAlign(EltTy));
       return thisT()->getStridedMemoryOpCost(Instruction::Load, RetTy, Ptr,
                                              VarMask, Alignment, CostKind, I);
     }
@@ -1945,8 +1949,7 @@ public:
         ScalarRetTy = RetTy->getScalarType();
       }
       SmallVector<Type *, 4> ScalarTys;
-      for (unsigned i = 0, ie = Tys.size(); i != ie; ++i) {
-        Type *Ty = Tys[i];
+      for (Type *Ty : Tys) {
         if (auto *VTy = dyn_cast<VectorType>(Ty)) {
           if (!SkipScalarizationCost)
             ScalarizationCost += getScalarizationOverhead(
@@ -1979,6 +1982,24 @@ public:
       break;
     case Intrinsic::tan:
       ISD = ISD::FTAN;
+      break;
+    case Intrinsic::asin:
+      ISD = ISD::FASIN;
+      break;
+    case Intrinsic::acos:
+      ISD = ISD::FACOS;
+      break;
+    case Intrinsic::atan:
+      ISD = ISD::FATAN;
+      break;
+    case Intrinsic::sinh:
+      ISD = ISD::FSINH;
+      break;
+    case Intrinsic::cosh:
+      ISD = ISD::FCOSH;
+      break;
+    case Intrinsic::tanh:
+      ISD = ISD::FTANH;
       break;
     case Intrinsic::exp:
       ISD = ISD::FEXP;
@@ -2368,8 +2389,7 @@ public:
 
       unsigned ScalarCalls = cast<FixedVectorType>(RetVTy)->getNumElements();
       SmallVector<Type *, 4> ScalarTys;
-      for (unsigned i = 0, ie = Tys.size(); i != ie; ++i) {
-        Type *Ty = Tys[i];
+      for (Type *Ty : Tys) {
         if (Ty->isVectorTy())
           Ty = Ty->getScalarType();
         ScalarTys.push_back(Ty);
@@ -2377,8 +2397,8 @@ public:
       IntrinsicCostAttributes Attrs(IID, RetTy->getScalarType(), ScalarTys, FMF);
       InstructionCost ScalarCost =
           thisT()->getIntrinsicInstrCost(Attrs, CostKind);
-      for (unsigned i = 0, ie = Tys.size(); i != ie; ++i) {
-        if (auto *VTy = dyn_cast<VectorType>(Tys[i])) {
+      for (Type *Ty : Tys) {
+        if (auto *VTy = dyn_cast<VectorType>(Ty)) {
           if (!ICA.skipScalarizationCost())
             ScalarizationCost += getScalarizationOverhead(
                 VTy, /*Insert*/ false, /*Extract*/ true, CostKind);
