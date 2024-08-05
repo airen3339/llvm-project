@@ -2968,10 +2968,28 @@ LogicalResult WinogradOutputTransformOp::verify() {
 // LinalgDialect
 //===----------------------------------------------------------------------===//
 
+namespace {
+struct LinalgAbsorbTensorCastProducersPattern
+    : public OpInterfaceRewritePattern<linalg::LinalgOp> {
+  using OpInterfaceRewritePattern<linalg::LinalgOp>::OpInterfaceRewritePattern;
+
+  LogicalResult matchAndRewrite(LinalgOp op,
+                                PatternRewriter &rewriter) const override {
+    DestinationStyleOpInterface dpsOp =
+        llvm::dyn_cast<DestinationStyleOpInterface>(op.getOperation());
+    if (!dpsOp)
+      return failure();
+    return foldCastProducers<tensor::CastOp>(dpsOp, rewriter);
+  }
+};
+} // namespace
+
 void LinalgDialect::getCanonicalizationPatterns(
     RewritePatternSet &results) const {
-  results.add<EraseDeadLinalgOp, FoldTensorCastConsumerOp,
-              InferStaticShapeOfOperands>(getContext());
+  results
+      .add<EraseDeadLinalgOp, FoldTensorCastConsumerOp,
+           InferStaticShapeOfOperands, LinalgAbsorbTensorCastProducersPattern>(
+          getContext());
 }
 
 Operation *LinalgDialect::materializeConstant(OpBuilder &builder,
