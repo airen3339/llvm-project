@@ -12,6 +12,7 @@
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
+#include "clang/AST/FormatString.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/StmtVisitor.h"
@@ -523,13 +524,15 @@ AST_MATCHER(CallExpr, isUnsafeLibcFunctionCall) {
   // checks for `printf`s:
   struct FuncNameMatch {
     const CallExpr *const Call;
+    ASTContext &Ctx;
     enum ResultKind {
       NO,           // no match
       YES,          // matched a name that is not a member of the printf family
       SPRINTF,      // matched `sprintf`
       OTHER_PRINTF, // matched a printf function that is not `sprintf`
     };
-    FuncNameMatch(const CallExpr *Call) : Call(Call) {}
+    FuncNameMatch(const CallExpr *Call, ASTContext &Ctx)
+        : Call(Call), Ctx(Ctx) {}
 
     // For a name `S` in `PredefinedNames` or a member of the printf/scanf
     // family, define matching function names with `S` by the grammar below:
@@ -613,6 +616,8 @@ AST_MATCHER(CallExpr, isUnsafeLibcFunctionCall) {
     static bool isNullTermPointer(const Expr *Ptr) {
       if (isa<StringLiteral>(Ptr->IgnoreParenImpCasts()))
         return true;
+      if (isa<PredefinedExpr>(Ptr->IgnoreParenImpCasts()))
+        return true;
       if (auto *MCE = dyn_cast<CXXMemberCallExpr>(Ptr->IgnoreParenImpCasts())) {
         const CXXMethodDecl *MD = MCE->getMethodDecl();
         const CXXRecordDecl *RD = MCE->getRecordDecl()->getCanonicalDecl();
@@ -624,29 +629,50 @@ AST_MATCHER(CallExpr, isUnsafeLibcFunctionCall) {
       return false;
     }
 
+    // Return true iff at least one of following cases holds:
+    //  1. Format string is a literal and there is an unsafe pointer argument
+    //     corresponding to an `s` specifier;
+    //  2. Format string is not a literal and there is least an unsafe pointer
+    //     argument (including the formatter argument).
+    bool hasUnsafeFormatOrSArg(const Expr *Fmt, unsigned FmtArgIdx) {
+      if (auto *SL = dyn_cast<StringLiteral>(Fmt->IgnoreParenImpCasts())) {
+        StringRef FmtStr = SL->getString();
+        auto I = FmtStr.begin();
+        auto E = FmtStr.end();
+        unsigned ArgIdx = FmtArgIdx;
+
+        do {
+          ArgIdx = analyze_format_string::ParseFormatStringFirstSArgIndex(
+              I, E, ArgIdx, Ctx.getLangOpts(), Ctx.getTargetInfo());
+          if (ArgIdx && Call->getNumArgs() > ArgIdx &&
+              !isNullTermPointer(Call->getArg(ArgIdx)))
+            return true;
+        } while (ArgIdx);
+        return false;
+      }
+      // If format is not a string literal, we cannot analyze the format string.
+      // In this case, this call is considered unsafe if at least one argument
+      // (including the format argument) is unsafe pointer.
+      return llvm::any_of(
+          llvm::make_range(Call->arg_begin() + FmtArgIdx, Call->arg_end()),
+          [](const Expr *Arg) {
+            return Arg->getType()->isPointerType() && !isNullTermPointer(Arg);
+          });
+    }
+
     // Check safe patterns for printfs w.r.t their prefixes:
     ResultKind
     isUnsafePrintf(StringRef Prefix /* empty, 'k', 'f', 's', or 'sn' */) {
-      auto AnyUnsafeStrPtr = [](const Expr *Arg) -> bool {
-        return Arg->getType()->isPointerType() && !isNullTermPointer(Arg);
-      };
-
       if (Prefix.empty() ||
           Prefix == "k") // printf: all pointer args should be null-terminated
-        return llvm::any_of(Call->arguments(), AnyUnsafeStrPtr) ? OTHER_PRINTF
-                                                                : NO;
-
-      if (Prefix == "f" && Call->getNumArgs() > 1) {
-        // fprintf, same as printf but skip the first arg
-        auto Range = llvm::make_range(Call->arg_begin() + 1, Call->arg_end());
-        return llvm::any_of(Range, AnyUnsafeStrPtr) ? OTHER_PRINTF : NO;
-      }
-      if (Prefix == "sn" && Call->getNumArgs() > 2) {
+        return hasUnsafeFormatOrSArg(Call->getArg(0), 0) ? OTHER_PRINTF : NO;
+      if (Prefix == "f")
+        return hasUnsafeFormatOrSArg(Call->getArg(1), 1) ? OTHER_PRINTF : NO;
+      if (Prefix == "sn") {
         // The first two arguments need to be in safe patterns, which is checked
         // by `isSafeSizedby`:
-        auto Range = llvm::make_range(Call->arg_begin() + 2, Call->arg_end());
         return (!isSafeSizedby(*Call->arg_begin(), *(Call->arg_begin() + 1)) ||
-                llvm::any_of(Range, AnyUnsafeStrPtr))
+                hasUnsafeFormatOrSArg(Call->getArg(2), 2))
                    ? OTHER_PRINTF
                    : NO;
       }
@@ -687,7 +713,7 @@ AST_MATCHER(CallExpr, isUnsafeLibcFunctionCall) {
       return Name == "strlen" && Call->getNumArgs() == 1 &&
              isa<StringLiteral>(Call->getArg(0)->IgnoreParenImpCasts());
     }
-  } FuncNameMatch{&Node};
+  } FuncNameMatch{&Node, Finder->getASTContext()};
 
   const FunctionDecl *FD = Node.getDirectCallee();
   const IdentifierInfo *II;

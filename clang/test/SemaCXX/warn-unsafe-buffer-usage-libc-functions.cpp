@@ -61,7 +61,6 @@ void f(char * p, char * q, std::span<char> s) {
 
 
   /* Test printfs */
-
   fprintf((FILE*)p, "%s%d", p, *p);  // expected-warning{{function fprintf introduces unsafe buffer access}} expected-note{{use 'std::string::c_str' as pointer to guarantee null-termination}}
   printf("%s%d", p, *p);  // expected-warning{{function printf introduces unsafe buffer access}} expected-note{{use 'std::string::c_str' as pointer to guarantee null-termination}}
   sprintf(q, "%s%d", "hello", *p); // expected-warning{{function sprintf introduces unsafe buffer access}} expected-note{{change to 'snprintf' for explicit bounds checking}}
@@ -70,14 +69,21 @@ void f(char * p, char * q, std::span<char> s) {
   vsnprintf(s.data(), s.size_bytes(), "%s%d", "hello", *p); // expected-warning{{function vsnprintf introduces unsafe buffer access}}
   sscanf(p, "%s%d", "hello", *p);    // expected-warning{{function sscanf introduces unsafe buffer access}}
   sscanf_s(p, "%s%d", "hello", *p);  // expected-warning{{function sscanf_s introduces unsafe buffer access}}
-  fprintf((FILE*)p, "%s%d", "hello", *p); // no warn
+  fprintf((FILE*)p, "%P%d%p%i hello world %32s", *p, *p, p, *p, p); // expected-warning{{function fprintf introduces unsafe buffer access}} expected-note{{use 'std::string::c_str' as pointer to guarantee null-termination}}
+  fprintf((FILE*)p, "%P%d%p%i hello world %32s", *p, *p, p, *p, "hello"); // no warn
   printf("%s%d", "hello", *p); // no warn
   snprintf(s.data(), s.size_bytes(), "%s%d", "hello", *p); // no warn
+  snprintf(s.data(), s.size_bytes(), "%s%d", __PRETTY_FUNCTION__, *p); // no warn
   strlen("hello");// no warn
 }
 
-void v(std::string s1) {
-  snprintf(s1.data(), s1.size_bytes(), "%s%d", s1.c_str(), 0); // no warn
+void v(std::string s1, int *p) {
+  snprintf(s1.data(), s1.size_bytes(), "%s%d%s%p%s", __PRETTY_FUNCTION__, *p, "hello", p, s1.c_str()); // no warn
+  snprintf(s1.data(), s1.size_bytes(), s1.c_str(), __PRETTY_FUNCTION__, *p, "hello", s1.c_str());      // no warn
+  printf("%s%d%s%p%s", __PRETTY_FUNCTION__, *p, "hello", p, s1.c_str());              // no warn
+  printf(s1.c_str(), __PRETTY_FUNCTION__, *p, "hello", s1.c_str());                   // no warn
+  fprintf((FILE*)0, "%s%d%s%p%s", __PRETTY_FUNCTION__, *p, "hello", p, s1.c_str());   // no warn
+  fprintf((FILE*)0, s1.c_str(), __PRETTY_FUNCTION__, *p, "hello", s1.c_str());        // no warn
 }
 
 
