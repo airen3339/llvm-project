@@ -54,8 +54,19 @@ class basic_const_iterator;
 
 template <input_iterator _Iter>
 using const_iterator = conditional_t<__constant_iterator<_Iter>, _Iter, basic_const_iterator<_Iter>>;
+
+// This doesn't use `conditional_t` to avoid instantiating const_iterator<_Sent> when _Sent is not an input_iterator.
+template <class _Sent>
+struct __const_sentinel_impl {
+  using type = _Sent;
+};
+template <class _Sent>
+  requires input_iterator<_Sent>
+struct __const_sentinel_impl<_Sent> {
+  using type = const_iterator<_Sent>;
+};
 template <semiregular _Sent>
-using const_sentinel = conditional_t<input_iterator<_Sent>, const_iterator<_Sent>, _Sent>;
+using const_sentinel = __const_sentinel_impl<_Sent>::type;
 
 template <class _Iter>
 concept __not_a_const_iterator = !__is_specialization_v<_Iter, basic_const_iterator>;
@@ -84,11 +95,11 @@ template <class _Iter>
 struct __basic_const_iterator_category : __basic_const_iterator_concept<_Iter> {};
 template <forward_iterator _Iter>
 struct __basic_const_iterator_category<_Iter> : __basic_const_iterator_concept<_Iter> {
-  using iterator_category = __basic_const_iterator_concept<_Iter>::iterator_concept;
+  using iterator_category = std::iterator_traits<_Iter>::iterator_category;
 };
 
 template <input_iterator _Iter>
-class _LIBCPP_TEMPLATE_VIS basic_const_iterator : __basic_const_iterator_category<_Iter> {
+class _LIBCPP_TEMPLATE_VIS basic_const_iterator : public __basic_const_iterator_category<_Iter> {
   _Iter __current = _Iter();
 
   using __reference        = iter_const_reference_t<_Iter>;
@@ -217,32 +228,32 @@ public:
   _LIBCPP_HIDE_FROM_ABI constexpr bool operator<(const _Iter2& __rhs) const
     requires random_access_iterator<_Iter> && totally_ordered_with<_Iter, _Iter2>
   {
-    return __current < __rhs.__current;
+    return __current < __rhs;
   }
   template <__different_from<basic_const_iterator> _Iter2>
   _LIBCPP_HIDE_FROM_ABI constexpr bool operator>(const _Iter2& __rhs) const
     requires random_access_iterator<_Iter> && totally_ordered_with<_Iter, _Iter2>
   {
-    return __current > __rhs.__current;
+    return __current > __rhs;
   }
   template <__different_from<basic_const_iterator> _Iter2>
   _LIBCPP_HIDE_FROM_ABI constexpr bool operator<=(const _Iter2& __rhs) const
     requires random_access_iterator<_Iter> && totally_ordered_with<_Iter, _Iter2>
   {
-    return __current <= __rhs.__current;
+    return __current <= __rhs;
   }
   template <__different_from<basic_const_iterator> _Iter2>
   _LIBCPP_HIDE_FROM_ABI constexpr bool operator>=(const _Iter2& __rhs) const
     requires random_access_iterator<_Iter> && totally_ordered_with<_Iter, _Iter2>
   {
-    return __current >= __rhs.__current;
+    return __current >= __rhs;
   }
   template <__different_from<basic_const_iterator> _Iter2>
   _LIBCPP_HIDE_FROM_ABI constexpr auto operator<=>(const _Iter2& __rhs) const
     requires random_access_iterator<_Iter> && totally_ordered_with<_Iter, _Iter2> &&
              three_way_comparable_with<_Iter, _Iter2>
   {
-    return __current <=> __rhs.__current;
+    return __current <=> __rhs;
   }
 
   template <__not_a_const_iterator _Iter2>
@@ -301,8 +312,8 @@ public:
   }
 
   friend _LIBCPP_HIDE_FROM_ABI constexpr __rvalue_reference iter_move(const basic_const_iterator& __it) noexcept(
-      noexcept(static_cast<__rvalue_reference>(ranges::iter_move(__it.current_)))) {
-    return static_cast<__rvalue_reference>(ranges::iter_move(__it.current_));
+      noexcept(static_cast<__rvalue_reference>(ranges::iter_move(__it.__current)))) {
+    return static_cast<__rvalue_reference>(ranges::iter_move(__it.__current));
   }
 };
 
