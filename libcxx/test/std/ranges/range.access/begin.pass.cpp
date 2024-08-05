@@ -19,9 +19,9 @@
 #include "test_iterators.h"
 
 using RangeBeginT = decltype(std::ranges::begin);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 using RangeCBeginT = decltype(std::ranges::cbegin);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 static int globalBuff[8];
 
@@ -29,43 +29,43 @@ static_assert(!std::is_invocable_v<RangeBeginT, int (&&)[10]>);
 static_assert( std::is_invocable_v<RangeBeginT, int (&)[10]>);
 static_assert(!std::is_invocable_v<RangeBeginT, int (&&)[]>);
 static_assert( std::is_invocable_v<RangeBeginT, int (&)[]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCBeginT, int (&&)[10]>);
 static_assert( std::is_invocable_v<RangeCBeginT, int (&)[10]>);
 static_assert(!std::is_invocable_v<RangeCBeginT, int (&&)[]>);
 static_assert( std::is_invocable_v<RangeCBeginT, int (&)[]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct Incomplete;
 static_assert(!std::is_invocable_v<RangeBeginT, Incomplete(&&)[]>);
 static_assert(!std::is_invocable_v<RangeBeginT, const Incomplete(&&)[]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCBeginT, Incomplete(&&)[]>);
 static_assert(!std::is_invocable_v<RangeCBeginT, const Incomplete(&&)[]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 static_assert(!std::is_invocable_v<RangeBeginT, Incomplete(&&)[10]>);
 static_assert(!std::is_invocable_v<RangeBeginT, const Incomplete(&&)[10]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCBeginT, Incomplete(&&)[10]>);
 static_assert(!std::is_invocable_v<RangeCBeginT, const Incomplete(&&)[10]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 // This case is IFNDR; we handle it SFINAE-friendly.
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeBeginT, Incomplete(&)[]>);
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeBeginT, const Incomplete(&)[]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCBeginT, Incomplete(&)[]>);
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCBeginT, const Incomplete(&)[]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 // This case is IFNDR; we handle it SFINAE-friendly.
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeBeginT, Incomplete(&)[10]>);
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeBeginT, const Incomplete(&)[10]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCBeginT, Incomplete(&)[10]>);
 LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCBeginT, const Incomplete(&)[10]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct BeginMember {
   int x;
@@ -77,12 +77,12 @@ static_assert( std::is_invocable_v<RangeBeginT, BeginMember &>);
 static_assert(!std::is_invocable_v<RangeBeginT, BeginMember &&>);
 static_assert( std::is_invocable_v<RangeBeginT, BeginMember const&>);
 static_assert(!std::is_invocable_v<RangeBeginT, BeginMember const&&>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert( std::is_invocable_v<RangeCBeginT, BeginMember &>);
 static_assert(!std::is_invocable_v<RangeCBeginT, BeginMember &&>);
 static_assert( std::is_invocable_v<RangeCBeginT, BeginMember const&>);
 static_assert(!std::is_invocable_v<RangeCBeginT, BeginMember const&&>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 constexpr bool testReturnTypes() {
   int* a[2];
@@ -96,11 +96,11 @@ constexpr bool testReturnTypes() {
   ASSERT_SAME_TYPE(decltype(std::ranges::begin(b)), int(*)[2]);
   ASSERT_SAME_TYPE(decltype(std::ranges::begin(c)), char*);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   ASSERT_SAME_TYPE(decltype(std::ranges::cbegin(a)), int* const*);
   ASSERT_SAME_TYPE(decltype(std::ranges::cbegin(b)), const int(*)[2]);
   ASSERT_SAME_TYPE(decltype(std::ranges::cbegin(c)), short*);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
@@ -114,11 +114,11 @@ constexpr bool testArray() {
   assert(std::ranges::begin(b) == b);
   assert(std::ranges::begin(c) == c);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   assert(std::ranges::cbegin(a) == a);
   assert(std::ranges::cbegin(b) == b);
   assert(std::ranges::cbegin(c) == c);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
@@ -151,10 +151,10 @@ struct NonConstBeginMember {
 };
 static_assert( std::is_invocable_v<RangeBeginT,  NonConstBeginMember &>);
 static_assert(!std::is_invocable_v<RangeBeginT,  NonConstBeginMember const&>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCBeginT, NonConstBeginMember &>);
 static_assert(!std::is_invocable_v<RangeCBeginT, NonConstBeginMember const&>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct EnabledBorrowingBeginMember {
   constexpr int *begin() const { return &globalBuff[0]; }
@@ -189,7 +189,7 @@ constexpr bool testBeginMember() {
   assert(std::ranges::begin(d) == &d.x);
   assert(std::ranges::begin(e) == &e.x);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   assert(std::ranges::cbegin(a) == &a.x);
   static_assert(!std::is_invocable_v<RangeCBeginT, BeginMember&&>);
   static_assert(!std::is_invocable_v<RangeCBeginT, NonConstBeginMember&>);
@@ -197,7 +197,7 @@ constexpr bool testBeginMember() {
   assert(std::ranges::cbegin(std::move(c)) == &globalBuff[0]);
   assert(std::ranges::cbegin(d) == &d.x);
   assert(std::ranges::cbegin(e) == &e.x);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
@@ -210,10 +210,10 @@ struct BeginFunction {
 static_assert( std::is_invocable_v<RangeBeginT,  BeginFunction const&>);
 static_assert(!std::is_invocable_v<RangeBeginT,  BeginFunction &&>);
 static_assert(std::is_invocable_v<RangeBeginT, BeginFunction&>); // Ill-formed before P2602R2 Poison Pills are Too Toxic
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert( std::is_invocable_v<RangeCBeginT, BeginFunction const&>);
 static_assert( std::is_invocable_v<RangeCBeginT, BeginFunction &>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct BeginFunctionReturnsInt {
   friend int begin(BeginFunctionReturnsInt const&);
@@ -234,9 +234,9 @@ static_assert(!std::is_invocable_v<RangeBeginT, BeginFunctionReturnsPtrConvertib
 struct BeginFunctionByValue {
   friend constexpr int *begin(BeginFunctionByValue) { return &globalBuff[1]; }
 };
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCBeginT, BeginFunctionByValue>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct BeginFunctionEnabledBorrowing {
   friend constexpr int *begin(BeginFunctionEnabledBorrowing) { return &globalBuff[2]; }
@@ -290,7 +290,7 @@ constexpr bool testBeginFunction() {
   assert(std::ranges::begin(f) == &f.y); // Ill-formed before P2602R2 Poison Pills are Too Toxic
   assert(std::ranges::begin(ff) == &ff.y);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   assert(std::ranges::cbegin(a) == &a.x);
   assert(std::ranges::cbegin(aa) == &aa.x);
   assert(std::ranges::cbegin(b) == &globalBuff[1]);
@@ -303,59 +303,59 @@ constexpr bool testBeginFunction() {
   assert(std::ranges::cbegin(ee) == &ee.x);
   assert(std::ranges::cbegin(f) == &f.y);
   assert(std::ranges::cbegin(ff) == &ff.y);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
 
 
 ASSERT_NOEXCEPT(std::ranges::begin(std::declval<int (&)[10]>()));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 ASSERT_NOEXCEPT(std::ranges::cbegin(std::declval<int (&)[10]>()));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct NoThrowMemberBegin {
   ThrowingIterator<int> begin() const noexcept; // auto(t.begin()) doesn't throw
 } ntmb;
 static_assert(noexcept(std::ranges::begin(ntmb)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(noexcept(std::ranges::cbegin(ntmb)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct NoThrowADLBegin {
   friend ThrowingIterator<int> begin(NoThrowADLBegin&) noexcept;  // auto(begin(t)) doesn't throw
   friend ThrowingIterator<int> begin(const NoThrowADLBegin&) noexcept;
 } ntab;
 static_assert(noexcept(std::ranges::begin(ntab)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(noexcept(std::ranges::cbegin(ntab)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct NoThrowMemberBeginReturnsRef {
   ThrowingIterator<int>& begin() const noexcept; // auto(t.begin()) may throw
 } ntmbrr;
 static_assert(!noexcept(std::ranges::begin(ntmbrr)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!noexcept(std::ranges::cbegin(ntmbrr)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct BeginReturnsArrayRef {
     auto begin() const noexcept -> int(&)[10];
 } brar;
 static_assert(noexcept(std::ranges::begin(brar)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(noexcept(std::ranges::cbegin(brar)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 // Test ADL-proofing.
 struct Incomplete;
 template<class T> struct Holder { T t; };
 static_assert(!std::is_invocable_v<RangeBeginT, Holder<Incomplete>*>);
 static_assert(!std::is_invocable_v<RangeBeginT, Holder<Incomplete>*&>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCBeginT, Holder<Incomplete>*>);
 static_assert(!std::is_invocable_v<RangeCBeginT, Holder<Incomplete>*&>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 int main(int, char**) {
   static_assert(testReturnTypes());

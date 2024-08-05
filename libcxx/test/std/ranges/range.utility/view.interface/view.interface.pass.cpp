@@ -229,6 +229,7 @@ constexpr bool testEmpty() {
   return true;
 }
 
+#if TEST_STD_VER >= 23
 template <class T>
 concept ConstAccessorsInvocable = requires(T& t) {
   t.cbegin();
@@ -239,6 +240,7 @@ static_assert(ConstAccessorsInvocable<InputRange>);
 static_assert(ConstAccessorsInvocable<const InputRange>);
 static_assert(ConstAccessorsInvocable<NonConstInputRange>);
 static_assert(!ConstAccessorsInvocable<const NonConstInputRange>);
+#endif // TEST_STD_VER >= 23
 
 template<class T>
 concept DataInvocable = requires (T const& obj) { obj.data(); };

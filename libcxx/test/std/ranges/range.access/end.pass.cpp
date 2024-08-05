@@ -19,9 +19,9 @@
 #include "test_iterators.h"
 
 using RangeEndT = decltype(std::ranges::end);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 using RangeCEndT = decltype(std::ranges::cend);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 static int globalBuff[8];
 
@@ -29,20 +29,20 @@ static_assert(!std::is_invocable_v<RangeEndT, int (&&)[]>);
 static_assert(!std::is_invocable_v<RangeEndT, int (&)[]>);
 static_assert(!std::is_invocable_v<RangeEndT, int (&&)[10]>);
 static_assert( std::is_invocable_v<RangeEndT, int (&)[10]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCEndT, int (&&)[]>);
 static_assert(!std::is_invocable_v<RangeCEndT, int (&)[]>);
 static_assert(!std::is_invocable_v<RangeCEndT, int (&&)[10]>);
 static_assert( std::is_invocable_v<RangeCEndT, int (&)[10]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct Incomplete;
 static_assert(!std::is_invocable_v<RangeEndT, Incomplete(&&)[]>);
 static_assert(!std::is_invocable_v<RangeEndT, Incomplete(&&)[42]>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCEndT, Incomplete(&&)[]>);
 static_assert(!std::is_invocable_v<RangeCEndT, Incomplete(&&)[42]>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct EndMember {
   int x;
@@ -55,12 +55,12 @@ static_assert( std::is_invocable_v<RangeEndT, EndMember &>);
 static_assert(!std::is_invocable_v<RangeEndT, EndMember &&>);
 static_assert( std::is_invocable_v<RangeEndT, EndMember const&>);
 static_assert(!std::is_invocable_v<RangeEndT, EndMember const&&>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert( std::is_invocable_v<RangeCEndT, EndMember &>);
 static_assert(!std::is_invocable_v<RangeCEndT, EndMember &&>);
 static_assert( std::is_invocable_v<RangeCEndT, EndMember const&>);
 static_assert(!std::is_invocable_v<RangeCEndT, EndMember const&&>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 constexpr bool testReturnTypes() {
   int* a[2];
@@ -76,11 +76,11 @@ constexpr bool testReturnTypes() {
   ASSERT_SAME_TYPE(decltype(std::ranges::end(b)), int(*)[2]);
   ASSERT_SAME_TYPE(decltype(std::ranges::end(c)), sentinel_wrapper<char*>);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   ASSERT_SAME_TYPE(decltype(std::ranges::cend(a)), int* const*);
   ASSERT_SAME_TYPE(decltype(std::ranges::cend(b)), const int(*)[2]);
   ASSERT_SAME_TYPE(decltype(std::ranges::cend(c)), sentinel_wrapper<short*>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
@@ -94,11 +94,11 @@ constexpr bool testArray() {
   assert(std::ranges::end(b) == b + 2);
   assert(std::ranges::end(c) == c + 2);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   assert(std::ranges::cend(a) == a + 2);
   assert(std::ranges::cend(b) == b + 2);
   assert(std::ranges::cend(c) == c + 2);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
@@ -136,10 +136,10 @@ struct NonConstEndMember {
 };
 static_assert( std::is_invocable_v<RangeEndT,  NonConstEndMember &>);
 static_assert(!std::is_invocable_v<RangeEndT,  NonConstEndMember const&>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCEndT, NonConstEndMember &>);
 static_assert(!std::is_invocable_v<RangeCEndT, NonConstEndMember const&>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct EnabledBorrowingEndMember {
   constexpr int *begin() const { return nullptr; }
@@ -182,13 +182,13 @@ constexpr bool testEndMember() {
   assert(std::ranges::end(d) == &d.x);
   assert(std::ranges::end(e) == &e.x);
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   assert(std::ranges::cend(a) == &a.x);
   static_assert(!std::is_invocable_v<RangeCEndT, decltype((b))>);
   assert(std::ranges::cend(std::move(c)) == &globalBuff[0]);
   assert(std::ranges::cend(d) == &d.x);
   assert(std::ranges::cend(e) == &e.x);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
@@ -205,10 +205,10 @@ static_assert(!std::is_invocable_v<RangeEndT, EndFunction &&>);
 static_assert( std::is_invocable_v<RangeEndT,  EndFunction const&>);
 static_assert(!std::is_invocable_v<RangeEndT,  EndFunction &&>);
 static_assert(std::is_invocable_v<RangeEndT, EndFunction&>); // Ill-formed before P2602R2 Poison Pills are Too Toxic
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert( std::is_invocable_v<RangeCEndT, EndFunction const&>);
 static_assert( std::is_invocable_v<RangeCEndT, EndFunction &>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct EndFunctionReturnsInt {
   friend constexpr int begin(EndFunctionReturnsInt const&);
@@ -243,9 +243,9 @@ struct EndFunctionByValue {
   friend constexpr int *begin(EndFunctionByValue) { return nullptr; }
   friend constexpr int *end(EndFunctionByValue) { return &globalBuff[1]; }
 };
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCEndT, EndFunctionByValue>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct EndFunctionEnabledBorrowing {
   friend constexpr int *begin(EndFunctionEnabledBorrowing) { return nullptr; }
@@ -308,7 +308,7 @@ constexpr bool testEndFunction() {
   assert(std::ranges::end(g) == &g.x);
   assert(std::ranges::end(gg) == &gg.x); // Ill-formed before P2602R2 Poison Pills are Too Toxic
 
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
   assert(std::ranges::cend(a) == &a.x);
   assert(std::ranges::cend(aa) == &aa.x);
   assert(std::ranges::cend(b) == &globalBuff[1]);
@@ -321,25 +321,25 @@ constexpr bool testEndFunction() {
   assert(std::ranges::cend(ff) == &ff.y);
   assert(std::ranges::cend(g) == &g.x);
   assert(std::ranges::cend(gg) == &gg.x);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
   return true;
 }
 
 
 ASSERT_NOEXCEPT(std::ranges::end(std::declval<int (&)[10]>()));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 ASSERT_NOEXCEPT(std::ranges::cend(std::declval<int (&)[10]>()));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct NoThrowMemberEnd {
   ThrowingIterator<int> begin() const;
   ThrowingIterator<int> end() const noexcept; // auto(t.end()) doesn't throw
 } ntme;
 static_assert(noexcept(std::ranges::end(ntme)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(noexcept(std::ranges::cend(ntme)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct NoThrowADLEnd {
   ThrowingIterator<int> begin() const;
@@ -347,37 +347,37 @@ struct NoThrowADLEnd {
   friend ThrowingIterator<int> end(const NoThrowADLEnd&) noexcept;
 } ntae;
 static_assert(noexcept(std::ranges::end(ntae)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(noexcept(std::ranges::cend(ntae)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct NoThrowMemberEndReturnsRef {
   ThrowingIterator<int> begin() const;
   ThrowingIterator<int>& end() const noexcept; // auto(t.end()) may throw
 } ntmerr;
 static_assert(!noexcept(std::ranges::end(ntmerr)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!noexcept(std::ranges::cend(ntmerr)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 struct EndReturnsArrayRef {
     auto begin() const noexcept -> int(&)[10];
     auto end() const noexcept -> int(&)[10];
 } erar;
 static_assert(noexcept(std::ranges::end(erar)));
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(noexcept(std::ranges::cend(erar)));
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 // Test ADL-proofing.
 struct Incomplete;
 template<class T> struct Holder { T t; };
 static_assert(!std::is_invocable_v<RangeEndT, Holder<Incomplete>*>);
 static_assert(!std::is_invocable_v<RangeEndT, Holder<Incomplete>*&>);
-#if _LIBCPP_STD_VER < 23
+#if TEST_STD_VER < 23
 static_assert(!std::is_invocable_v<RangeCEndT, Holder<Incomplete>*>);
 static_assert(!std::is_invocable_v<RangeCEndT, Holder<Incomplete>*&>);
-#endif // _LIBCPP_STD_VER < 23
+#endif // TEST_STD_VER < 23
 
 int main(int, char**) {
   static_assert(testReturnTypes());
