@@ -33,7 +33,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 #  if _LIBCPP_STD_VER >= 23
 namespace ranges {
 template <input_range _Rp>
-constexpr auto& __possibly_const_range(_Rp& __rng) {
+constexpr auto& __possibly_const_range(_Rp& __rng) noexcept {
   if constexpr (constant_range<const _Rp> && !constant_range<_Rp>) {
     return const_cast<const _Rp&>(__rng);
   } else {
@@ -53,12 +53,12 @@ namespace __cbegin {
 struct __fn {
 #  if _LIBCPP_STD_VER >= 23
   template <class _Rng>
-  using _UType = decltype(ranges::begin(ranges::__possibly_const_range(std::declval<_Rng>())));
+  using _UType = decltype(ranges::begin(ranges::__possibly_const_range(std::declval<_Rng&>())));
 
   template <__const_accessible_range _Rng>
   [[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr static auto
   operator()(_Rng&& __rng) noexcept(noexcept(const_iterator<_UType<_Rng>>(
-      ranges::begin(ranges::__possibly_const_range(std::declval<_Rng>()))))) -> const_iterator<_UType<_Rng>> {
+      ranges::begin(ranges::__possibly_const_range(__rng))))) -> const_iterator<_UType<_Rng>> {
     return const_iterator<_UType<_Rng>>(ranges::begin(ranges::__possibly_const_range(__rng)));
   }
 #  else  // ^^^ _LIBCPP_STD_VER >= 23 / _LIBCPP_STD_VER < 23 vvv
@@ -92,7 +92,7 @@ namespace __cend {
 struct __fn {
 #  if _LIBCPP_STD_VER >= 23
   template <class _Rng>
-  using _UType = decltype(ranges::end(ranges::__possibly_const_range(std::declval<_Rng>())));
+  using _UType = decltype(ranges::end(ranges::__possibly_const_range(std::declval<_Rng&>())));
 
   template <__const_accessible_range _Rng>
   [[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr static auto
@@ -130,7 +130,7 @@ namespace __crbegin {
 struct __fn {
 #  if _LIBCPP_STD_VER >= 23
   template <class _Rng>
-  using _UType = decltype(ranges::rbegin(ranges::__possibly_const_range(std::declval<_Rng>())));
+  using _UType = decltype(ranges::rbegin(ranges::__possibly_const_range(std::declval<_Rng&>())));
 
   template <__const_accessible_range _Rng>
   [[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr static auto
@@ -169,7 +169,7 @@ namespace __crend {
 struct __fn {
 #  if _LIBCPP_STD_VER >= 23
   template <class _Rng>
-  using _UType = decltype(ranges::rend(ranges::__possibly_const_range(std::declval<_Rng>())));
+  using _UType = decltype(ranges::rend(ranges::__possibly_const_range(std::declval<_Rng&>())));
 
   template <__const_accessible_range _Rng>
   [[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr static auto
