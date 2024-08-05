@@ -1134,16 +1134,13 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
       MVT ElementVT = MVT::getIntegerVT(SrcEltSize >> 1);
       MVT VecVT = DstLT.second.changeVectorElementType(ElementVT);
       Cost += getRISCVInstructionCost(FNCVT, VecVT, CostKind);
-    }
-    if ((SrcEltSize >> 1) > DstEltSize) {
-      // For mask type, we use:
-      // vand.vi v8, v9, 1
-      // vmsne.vi v0, v8, 0
-      VectorType *VecTy =
-          VectorType::get(IntegerType::get(Dst->getContext(), SrcEltSize >> 1),
-                          cast<VectorType>(Dst)->getElementCount());
-      Cost +=
-          getCastInstrCost(Instruction::Trunc, Dst, VecTy, CCH, CostKind, I);
+      if ((SrcEltSize >> 1) > DstEltSize) {
+        VectorType *VecTy = VectorType::get(
+            IntegerType::get(Dst->getContext(), SrcEltSize >> 1),
+            cast<VectorType>(Dst)->getElementCount());
+        Cost +=
+            getCastInstrCost(Instruction::Trunc, Dst, VecTy, CCH, CostKind, I);
+      }
     }
     return Cost;
   }
@@ -1172,25 +1169,19 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
       return Cost;
     }
 
-    if ((DstEltSize >> 1) > SrcEltSize) {
-      // Do pre-widening before converting:
-      // 1. Backend could lower (v[sz]ext i8 to double) to
-      //    vfcvt(v[sz]ext.f8 i8),
-      // 2. For mask vector to fp, we should use the following instructions:
-      //    vmv.v.i v8, 0
-      //    vmerge.vim v8, v8, -1, v0
-      SrcEltSize = DstEltSize >> 1;
-      VectorType *VecTy =
-          VectorType::get(IntegerType::get(Dst->getContext(), SrcEltSize),
-                          cast<VectorType>(Dst)->getElementCount());
-      unsigned Op = IsSigned ? Instruction::SExt : Instruction::ZExt;
-      Cost += getCastInstrCost(Op, VecTy, Src, CCH, CostKind, I);
-    }
     if (DstEltSize == SrcEltSize)
       Cost += getRISCVInstructionCost(FCVT, DstLT.second, CostKind);
-    else if (DstEltSize > SrcEltSize)
+    else if (DstEltSize > SrcEltSize) {
+      if ((DstEltSize >> 1) > SrcEltSize) {
+        SrcEltSize = DstEltSize >> 1;
+        VectorType *VecTy =
+            VectorType::get(IntegerType::get(Dst->getContext(), SrcEltSize),
+                            cast<VectorType>(Dst)->getElementCount());
+        unsigned Op = IsSigned ? Instruction::SExt : Instruction::ZExt;
+        Cost += getCastInstrCost(Op, VecTy, Src, CCH, CostKind, I);
+      }
       Cost += getRISCVInstructionCost(FWCVT, DstLT.second, CostKind);
-    else
+    } else
       Cost += getRISCVInstructionCost(FNCVT, DstLT.second, CostKind);
     return Cost;
   }
