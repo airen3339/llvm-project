@@ -89,8 +89,8 @@ constexpr bool test_basic_operations() {
   static_assert(!std::is_invocable_v<decltype(std::ranges::iter_swap), decltype(first), decltype(first)>);
 
   assert(++first == arr + 1);
-  assert(--first == arr);
-  assert(first++ == arr);
+  assert(--first == arr + 0);
+  assert(first++ == arr + 0);
   assert(first-- == arr + 1);
 
   assert(first + 3 == arr + 3);
