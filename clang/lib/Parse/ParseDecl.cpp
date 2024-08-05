@@ -4557,6 +4557,10 @@ void Parser::ParseDeclarationSpecifiers(
       isInvalid = DS.SetTypeSpecType(DeclSpec::TST_int128, Loc, PrevSpec,
                                      DiagID, Policy);
       break;
+    case tok::kw___mfp8:
+      isInvalid = DS.SetTypeSpecType(DeclSpec::TST_MFloat8, Loc, PrevSpec,
+                                     DiagID, Policy);
+      break;
     case tok::kw_half:
       isInvalid = DS.SetTypeSpecType(DeclSpec::TST_half, Loc, PrevSpec,
                                      DiagID, Policy);
@@ -5831,6 +5835,7 @@ bool Parser::isKnownToBeTypeSpecifier(const Token &Tok) const {
   case tok::kw__ExtInt:
   case tok::kw__BitInt:
   case tok::kw___bf16:
+  case tok::kw___mfp8:
   case tok::kw_half:
   case tok::kw_float:
   case tok::kw_double:
@@ -5914,6 +5919,7 @@ bool Parser::isTypeSpecifierQualifier() {
   case tok::kw_int:
   case tok::kw__ExtInt:
   case tok::kw__BitInt:
+  case tok::kw___mfp8:
   case tok::kw_half:
   case tok::kw___bf16:
   case tok::kw_float:
@@ -6136,6 +6142,7 @@ bool Parser::isDeclarationSpecifier(
   case tok::kw_int:
   case tok::kw__ExtInt:
   case tok::kw__BitInt:
+  case tok::kw___mfp8:
   case tok::kw_half:
   case tok::kw___bf16:
   case tok::kw_float:

@@ -3655,6 +3655,7 @@ static bool TypeInfoIsInStandardLibrary(const BuiltinType *Ty) {
     case BuiltinType::SatUFract:
     case BuiltinType::SatULongFract:
     case BuiltinType::BFloat16:
+    case BuiltinType::MFloat8:
       return false;
 
     case BuiltinType::Dependent:
