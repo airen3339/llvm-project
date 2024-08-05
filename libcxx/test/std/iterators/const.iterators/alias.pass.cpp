@@ -21,7 +21,7 @@ ASSERT_SAME_TYPE(std::const_sentinel<int*>, std::basic_const_iterator<int*>);
 ASSERT_SAME_TYPE(std::const_sentinel<const int*>, const int*);
 ASSERT_SAME_TYPE(std::const_sentinel<std::default_sentinel_t>, std::default_sentinel_t);
 
-using list_iterator = std::list<int>::iterator;
+using list_iterator       = std::list<int>::iterator;
 using list_const_iterator = std::list<int>::const_iterator;
 
 ASSERT_SAME_TYPE(std::const_iterator<list_iterator>, std::basic_const_iterator<list_iterator>);
@@ -29,6 +29,4 @@ ASSERT_SAME_TYPE(std::const_iterator<list_const_iterator>, list_const_iterator);
 ASSERT_SAME_TYPE(std::const_sentinel<list_iterator>, std::basic_const_iterator<list_iterator>);
 ASSERT_SAME_TYPE(std::const_sentinel<list_const_iterator>, list_const_iterator);
 
-int main() {
-	return 0;
-}
+int main() { return 0; }

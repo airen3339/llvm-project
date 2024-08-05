@@ -73,16 +73,24 @@ public:
     }
   }
 
-  constexpr auto cbegin() requires input_range<_Derived> {
+  constexpr auto cbegin()
+    requires input_range<_Derived>
+  {
     return ranges::cbegin(__derived());
   }
-  constexpr auto cbegin() const requires input_range<const _Derived> {
+  constexpr auto cbegin() const
+    requires input_range<const _Derived>
+  {
     return ranges::cbegin(__derived());
   }
-  constexpr auto cend() requires input_range<_Derived> {
+  constexpr auto cend()
+    requires input_range<_Derived>
+  {
     return ranges::cend(__derived());
   }
-  constexpr auto cend() const requires input_range<const _Derived> {
+  constexpr auto cend() const
+    requires input_range<const _Derived>
+  {
     return ranges::cend(__derived());
   }
 

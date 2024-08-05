@@ -19,15 +19,15 @@
 #include "test_macros.h"
 #include "test_iterators.h"
 
-using RangeCEndT = decltype(std::ranges::cend);
+using RangeCEndT  = decltype(std::ranges::cend);
 using RangeCREndT = decltype(std::ranges::crend);
 
 static_assert(!std::is_invocable_v<RangeCEndT, int (&&)[10]>);
-static_assert( std::is_invocable_v<RangeCEndT, int (&)[10]>);
+static_assert(std::is_invocable_v<RangeCEndT, int (&)[10]>);
 static_assert(!std::is_invocable_v<RangeCEndT, int (&&)[]>);
 static_assert(!std::is_invocable_v<RangeCEndT, int (&)[]>);
 static_assert(!std::is_invocable_v<RangeCREndT, int (&&)[10]>);
-static_assert( std::is_invocable_v<RangeCREndT, int (&)[10]>);
+static_assert(std::is_invocable_v<RangeCREndT, int (&)[10]>);
 static_assert(!std::is_invocable_v<RangeCREndT, int (&&)[]>);
 static_assert(!std::is_invocable_v<RangeCREndT, int (&)[]>);
 
@@ -44,44 +44,44 @@ static_assert(!std::is_invocable_v<RangeCREndT, BidirectionalRangeNotDecrementab
 
 struct Incomplete;
 
-static_assert(!std::is_invocable_v<RangeCEndT, Incomplete(&&)[]>);
+static_assert(!std::is_invocable_v<RangeCEndT, Incomplete (&&)[]>);
 static_assert(!std::is_invocable_v<RangeCEndT, const Incomplete (&&)[]>);
-static_assert(!std::is_invocable_v<RangeCEndT, Incomplete(&&)[10]>);
-static_assert(!std::is_invocable_v<RangeCEndT, const Incomplete(&&)[10]>);
+static_assert(!std::is_invocable_v<RangeCEndT, Incomplete (&&)[10]>);
+static_assert(!std::is_invocable_v<RangeCEndT, const Incomplete (&&)[10]>);
 
 static_assert(!std::is_invocable_v<RangeCREndT, Incomplete (&&)[]>);
 static_assert(!std::is_invocable_v<RangeCREndT, const Incomplete (&&)[]>);
-static_assert(!std::is_invocable_v<RangeCREndT, Incomplete(&&)[10]>);
-static_assert(!std::is_invocable_v<RangeCREndT, const Incomplete(&&)[10]>);
+static_assert(!std::is_invocable_v<RangeCREndT, Incomplete (&&)[10]>);
+static_assert(!std::is_invocable_v<RangeCREndT, const Incomplete (&&)[10]>);
 
 // This case is IFNDR; we handle it SFINAE-friendly.
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, Incomplete(&)[]>);
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, const Incomplete(&)[]>);
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, Incomplete(&)[]>);
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, const Incomplete(&)[]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, Incomplete (&)[]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, const Incomplete (&)[]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, Incomplete (&)[]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, const Incomplete (&)[]>);
 
 // This case is IFNDR; we handle it SFINAE-friendly.
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, Incomplete(&)[10]>);
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, const Incomplete(&)[10]>);
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, Incomplete(&)[10]>);
-LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, const Incomplete(&)[10]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, Incomplete (&)[10]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCEndT, const Incomplete (&)[10]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, Incomplete (&)[10]>);
+LIBCPP_STATIC_ASSERT(!std::is_invocable_v<RangeCREndT, const Incomplete (&)[10]>);
 
 struct NonborrowingRange {
   int x;
-  constexpr const int *begin() const { return &x; }
-  constexpr const int *rbegin() const { return &x; }
-  constexpr const int *end() const { return &x; }
-  constexpr const int *rend() const { return &x; }
+  constexpr const int* begin() const { return &x; }
+  constexpr const int* rbegin() const { return &x; }
+  constexpr const int* end() const { return &x; }
+  constexpr const int* rend() const { return &x; }
 };
 
 // Ensure that we can't call with rvalues with borrowing disabled.
-static_assert( std::is_invocable_v<RangeCEndT, NonborrowingRange &>);
-static_assert(!std::is_invocable_v<RangeCEndT, NonborrowingRange &&>);
-static_assert( std::is_invocable_v<RangeCEndT, NonborrowingRange const&>);
+static_assert(std::is_invocable_v<RangeCEndT, NonborrowingRange&>);
+static_assert(!std::is_invocable_v<RangeCEndT, NonborrowingRange&&>);
+static_assert(std::is_invocable_v<RangeCEndT, NonborrowingRange const&>);
 static_assert(!std::is_invocable_v<RangeCEndT, NonborrowingRange const&&>);
-static_assert( std::is_invocable_v<RangeCREndT, NonborrowingRange &>);
-static_assert(!std::is_invocable_v<RangeCREndT, NonborrowingRange &&>);
-static_assert( std::is_invocable_v<RangeCREndT, NonborrowingRange const&>);
+static_assert(std::is_invocable_v<RangeCREndT, NonborrowingRange&>);
+static_assert(!std::is_invocable_v<RangeCREndT, NonborrowingRange&&>);
+static_assert(std::is_invocable_v<RangeCREndT, NonborrowingRange const&>);
 static_assert(!std::is_invocable_v<RangeCREndT, NonborrowingRange const&&>);
 
 constexpr bool testReturnTypes() {
@@ -157,10 +157,10 @@ constexpr bool testArray() {
 }
 
 struct BorrowingRange {
-  int *begin() const;
-  int *end() const;
+  int* begin() const;
+  int* end() const;
 };
-template<>
+template <>
 inline constexpr bool std::ranges::enable_borrowed_range<BorrowingRange> = true;
 
 static_assert(std::is_invocable_v<RangeCEndT, BorrowingRange>);
@@ -188,7 +188,10 @@ static_assert(!noexcept(std::ranges::crend(tbnte)));
 
 // Test ADL-proofing.
 struct Incomplete;
-template<class T> struct Holder { T t; };
+template <class T>
+struct Holder {
+  T t;
+};
 static_assert(!std::is_invocable_v<RangeCEndT, Holder<Incomplete>*>);
 static_assert(!std::is_invocable_v<RangeCEndT, Holder<Incomplete>*&>);
 static_assert(!std::is_invocable_v<RangeCREndT, Holder<Incomplete>*>);

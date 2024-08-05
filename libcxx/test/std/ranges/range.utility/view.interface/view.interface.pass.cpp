@@ -230,7 +230,7 @@ constexpr bool testEmpty() {
 }
 
 template <class T>
-concept ConstAccessorsInvocable = requires (T& t) {
+concept ConstAccessorsInvocable = requires(T& t) {
   t.cbegin();
   t.cend();
 };
