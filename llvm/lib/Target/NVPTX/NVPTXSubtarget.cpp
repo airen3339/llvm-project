@@ -12,6 +12,7 @@
 
 #include "NVPTXSubtarget.h"
 #include "NVPTXTargetMachine.h"
+#include "llvm/ADT/StringExtras.h"
 
 using namespace llvm;
 
@@ -26,24 +27,38 @@ static cl::opt<bool>
     NoF16Math("nvptx-no-f16-math", cl::Hidden,
               cl::desc("NVPTX Specific: Disable generation of f16 math ops."),
               cl::init(false));
+static cl::opt<unsigned>
+    NextSM("nvptx-next-sm", cl::Hidden,
+           cl::desc("NVPTX Specific: Override SM ID for sm_next."),
+           cl::init(90));
+static cl::opt<unsigned>
+    NextPTX("nvptx-next-ptx", cl::Hidden,
+            cl::desc("NVPTX Specific: Override PTX version for sm_next."),
+            cl::init(85));
+
 // Pin the vtable to this file.
 void NVPTXSubtarget::anchor() {}
 
 NVPTXSubtarget &NVPTXSubtarget::initializeSubtargetDependencies(StringRef CPU,
                                                                 StringRef FS) {
-    // Provide the default CPU if we don't have one.
-    TargetName = std::string(CPU.empty() ? "sm_30" : CPU);
+  // Provide the default CPU if we don't have one.
+  TargetName = std::string(CPU.empty() ? "sm_30" : CPU);
 
-    ParseSubtargetFeatures(TargetName, /*TuneCPU*/ TargetName, FS);
+  ParseSubtargetFeatures(TargetName, /*TuneCPU*/ TargetName, FS);
+  if (TargetName == "sm_next") {
+    TargetName = "sm_" + itostr(NextSM);
+    FullSmVersion = NextSM * 10;
+    PTXVersion = NextPTX;
+  }
 
-    // Re-map SM version numbers, SmVersion carries the regular SMs which do
-    // have relative order, while FullSmVersion allows distinguishing sm_90 from
-    // sm_90a, which would *not* be a subset of sm_91.
-    SmVersion = getSmVersion();
+  // Re-map SM version numbers, SmVersion carries the regular SMs which do
+  // have relative order, while FullSmVersion allows distinguishing sm_90 from
+  // sm_90a, which would *not* be a subset of sm_91.
+  SmVersion = getSmVersion();
 
-    // Set default to PTX 6.0 (CUDA 9.0)
-    if (PTXVersion == 0) {
-      PTXVersion = 60;
+  // Set default to PTX 6.0 (CUDA 9.0)
+  if (PTXVersion == 0) {
+    PTXVersion = 60;
   }
 
   return *this;

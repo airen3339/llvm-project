@@ -116,6 +116,14 @@ CudaVersion parseCudaHFile(llvm::StringRef Input) {
   }
   return CudaVersion::UNKNOWN;
 }
+
+std::string getSMNext(const llvm::opt::ArgList &DriverArgs) {
+  return DriverArgs
+      .getLastArgValue(
+          options::OPT_cuda_next_sm_EQ,
+          StringRef(OffloadArchToString(OffloadArch::CudaDefault)).substr(3))
+      .str(); // Strip leading "sm_" from the GPU variant name.
+}
 } // namespace
 
 void CudaInstallationDetector::WarnIfUnsupportedVersion() {
@@ -457,7 +465,9 @@ void NVPTX::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-v");
 
   CmdArgs.push_back("--gpu-name");
-  CmdArgs.push_back(Args.MakeArgString(OffloadArchToString(gpu_arch)));
+  CmdArgs.push_back(Args.MakeArgString(gpu_arch == OffloadArch::SM_next
+                                           ? "sm_" + getSMNext(Args)
+                                           : OffloadArchToString(gpu_arch)));
   CmdArgs.push_back("--output-file");
   std::string OutputFileName = TC.getInputFilename(Output);
 
@@ -659,6 +669,13 @@ void NVPTX::getNVPTXTargetFeatures(const Driver &D, const llvm::Triple &Triple,
     Features.push_back(Args.MakeArgString(PtxFeature));
     return;
   }
+  // Add --cuda-next-ptx to the list of features, but carry on to add the
+  // default PTX feature for the detected CUDA SDK. NVPTX back-end will use the
+  // higher version.
+  StringRef NextPtx = Args.getLastArgValue(options::OPT_cuda_next_ptx_EQ);
+  if (!NextPtx.empty())
+    Features.push_back(Args.MakeArgString("+ptx" + NextPtx));
+
   CudaInstallationDetector CudaInstallation(D, Triple, Args);
 
   // New CUDA versions often introduce new instructions that are only supported
@@ -851,47 +868,62 @@ void CudaToolChain::addClangTargetOptions(
       CC1Args.push_back("-fcuda-allow-variadic-functions");
   }
 
-  if (DriverArgs.hasArg(options::OPT_nogpulib))
-    return;
-
   if (DeviceOffloadingKind == Action::OFK_OpenMP &&
       DriverArgs.hasArg(options::OPT_S))
     return;
 
-  std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(GpuArch);
-  if (LibDeviceFile.empty()) {
-    getDriver().Diag(diag::err_drv_no_cuda_libdevice) << GpuArch;
-    return;
-  }
-
-  CC1Args.push_back("-mlink-builtin-bitcode");
-  CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
-
   clang::CudaVersion CudaInstallationVersion = CudaInstallation.version();
+
+  if (!DriverArgs.hasArg(options::OPT_nogpulib)) {
+    std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(GpuArch);
+    if (LibDeviceFile.empty()) {
+      getDriver().Diag(diag::err_drv_no_cuda_libdevice) << GpuArch;
+      return;
+    }
+
+    CC1Args.push_back("-mlink-builtin-bitcode");
+    CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
+
+    if (DeviceOffloadingKind == Action::OFK_OpenMP) {
+      if (CudaInstallationVersion < CudaVersion::CUDA_92) {
+        getDriver().Diag(
+            diag::err_drv_omp_offload_target_cuda_version_not_support)
+            << CudaVersionToString(CudaInstallationVersion);
+        return;
+      }
+
+      // Link the bitcode library late if we're using device LTO.
+      if (getDriver().isUsingLTO(/* IsOffload */ true))
+        return;
+
+      addOpenMPDeviceRTL(getDriver(), DriverArgs, CC1Args, GpuArch.str(),
+                         getTriple(), HostTC);
+    }
+  }
 
   if (DriverArgs.hasFlag(options::OPT_fcuda_short_ptr,
                          options::OPT_fno_cuda_short_ptr, false))
     CC1Args.append({"-mllvm", "--nvptx-short-ptr"});
 
-  if (CudaInstallationVersion >= CudaVersion::UNKNOWN)
+  if (CudaInstallation.isValid() &&
+      CudaInstallationVersion > CudaVersion::UNKNOWN)
     CC1Args.push_back(
         DriverArgs.MakeArgString(Twine("-target-sdk-version=") +
                                  CudaVersionToString(CudaInstallationVersion)));
 
-  if (DeviceOffloadingKind == Action::OFK_OpenMP) {
-    if (CudaInstallationVersion < CudaVersion::CUDA_92) {
-      getDriver().Diag(
-          diag::err_drv_omp_offload_target_cuda_version_not_support)
-          << CudaVersionToString(CudaInstallationVersion);
-      return;
-    }
+  std::string NextSM = getSMNext(DriverArgs);
+  if (!NextSM.empty()) {
+    CC1Args.push_back(DriverArgs.MakeArgStringRef("--cuda-next-sm=" + NextSM));
+    CC1Args.append(
+        {"-mllvm", DriverArgs.MakeArgString(("--nvptx-next-sm=" + NextSM))});
+  }
 
-    // Link the bitcode library late if we're using device LTO.
-    if (getDriver().isUsingLTO(/* IsOffload */ true))
-      return;
-
-    addOpenMPDeviceRTL(getDriver(), DriverArgs, CC1Args, GpuArch.str(),
-                       getTriple(), HostTC);
+  StringRef NextPTX = DriverArgs.getLastArgValue(options::OPT_cuda_next_ptx_EQ);
+  if (!NextPTX.empty()) {
+    CC1Args.push_back(
+        DriverArgs.MakeArgStringRef(("--cuda-next-ptx=" + NextPTX).str()));
+    CC1Args.append({"-mllvm", DriverArgs.MakeArgString(
+                                  ("--nvptx-next-ptx=" + NextPTX).str())});
   }
 }
 

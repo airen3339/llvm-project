@@ -1458,6 +1458,17 @@ def fno_hip_emit_relocatable : Flag<["-"], "fno-hip-emit-relocatable">,
   HelpText<"Do not override toolchain to compile HIP source to relocatable">;
 }
 
+def cuda_next_sm_EQ : Joined<["--"], "cuda-next-sm=">,
+  Visibility<[ClangOption, CC1Option]>,
+  HelpText<"SM version to use for sm_next GPU">,
+  MarshallingInfoInt<LangOpts<"CUDANextSM">, "0">,
+  ShouldParseIf<cuda.KeyPath>,Flags<[HelpHidden]>;
+def cuda_next_ptx_EQ : Joined<["--"], "cuda-next-ptx=">,
+  Visibility<[ClangOption, CC1Option]>,
+  HelpText<"SM version to use for sm_next GPU">,
+  MarshallingInfoInt<LangOpts<"CUDANextPTX">, "0">,
+  ShouldParseIf<cuda.KeyPath>,Flags<[HelpHidden]>;
+
 // Clang specific/exclusive options for OpenACC.
 def openacc_macro_override
     : Separate<["-"], "fexperimental-openacc-macro-override">,
