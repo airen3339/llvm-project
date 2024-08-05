@@ -24,7 +24,7 @@
 !108 = !{i32 0}
 !109 = !DIFile(filename: "pbmsrch.c", directory: "/Users/grawp/LLVM/test-suite/MultiSource/Benchmarks/MiBench/office-stringsearch")
 
-define i32 @main() nounwind ssp {
+define signext i32 @main() nounwind ssp {
 bb.nph:
   tail call void @llvm.dbg.declare(metadata ptr @C.9.2167, metadata !102, metadata !DIExpression()), !dbg !107
   ret i32 0, !dbg !107

@@ -12,7 +12,7 @@
 ; on optnone functions, and that we can turn off FastISel.
 
 ; Function Attrs: noinline optnone
-define i32 @_Z3fooi(i32 %x) #0 {
+define signext i32 @_Z3fooi(i32 %x) #0 {
 entry:
   %x.addr = alloca i32, align 4
   store i32 %x, ptr %x.addr, align 4

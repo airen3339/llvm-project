@@ -18,19 +18,19 @@ define i64 @fun0(i64 %a) {
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = sdiv i64 %a, 20
 }
 
-define i32 @fun1(i32 %a) {
+define internal i32 @fun1(i32 %a) {
   %r = sdiv i32 %a, 20
   ret i32 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = sdiv i32 %a, 20
 }
 
-define i16 @fun2(i16 %a) {
+define internal i16 @fun2(i16 %a) {
   %r = sdiv i16 %a, 20
   ret i16 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = sdiv i16 %a, 20
 }
 
-define i8 @fun3(i8 %a) {
+define internal i8 @fun3(i8 %a) {
   %r = sdiv i8 %a, 20
   ret i8 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = sdiv i8 %a, 20
@@ -88,19 +88,19 @@ define i64 @fun11(i64 %a) {
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = udiv i64 %a, 20
 }
 
-define i32 @fun12(i32 %a) {
+define internal i32 @fun12(i32 %a) {
   %r = udiv i32 %a, 20
   ret i32 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = udiv i32 %a, 20
 }
 
-define i16 @fun13(i16 %a) {
+define internal i16 @fun13(i16 %a) {
   %r = udiv i16 %a, 20
   ret i16 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = udiv i16 %a, 20
 }
 
-define i8 @fun14(i8 %a) {
+define internal i8 @fun14(i8 %a) {
   %r = udiv i8 %a, 20
   ret i8 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = udiv i8
@@ -158,19 +158,19 @@ define i64 @fun22(i64 %a) {
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = srem i64
 }
 
-define i32 @fun23(i32 %a) {
+define internal i32 @fun23(i32 %a) {
   %r = srem i32 %a, 20
   ret i32 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = srem i32
 }
 
-define i16 @fun24(i16 %a) {
+define internal i16 @fun24(i16 %a) {
   %r = srem i16 %a, 20
   ret i16 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = srem i16
 }
 
-define i8 @fun25(i8 %a) {
+define internal i8 @fun25(i8 %a) {
   %r = srem i8 %a, 20
   ret i8 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = srem i8
@@ -228,19 +228,19 @@ define i64 @fun33(i64 %a) {
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = urem i64
 }
 
-define i32 @fun34(i32 %a) {
+define internal i32 @fun34(i32 %a) {
   %r = urem i32 %a, 20
   ret i32 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = urem i32
 }
 
-define i16 @fun35(i16 %a) {
+define internal i16 @fun35(i16 %a) {
   %r = urem i16 %a, 20
   ret i16 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = urem i16
 }
 
-define i8 @fun36(i8 %a) {
+define internal i8 @fun36(i8 %a) {
   %r = urem i8 %a, 20
   ret i8 %r
 ; COST: Cost Model: Found an estimated cost of 10 for instruction:   %r = urem i8

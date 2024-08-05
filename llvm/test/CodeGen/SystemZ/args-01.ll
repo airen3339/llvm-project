@@ -1,5 +1,5 @@
-; Test the handling of GPR, FPR and stack arguments when no extension
-; type is given.  This type of argument is used for passing structures, etc.
+; Test the handling of GPR, FPR and stack arguments with the noext attribute.
+; This type of argument is used for passing structures, etc.
 ;
 ; RUN: llc < %s -mtriple=s390x-linux-gnu | FileCheck %s -check-prefix=CHECK-INT
 ; RUN: llc < %s -mtriple=s390x-linux-gnu | FileCheck %s -check-prefix=CHECK-FLOAT
@@ -8,8 +8,9 @@
 ; RUN: llc < %s -mtriple=s390x-linux-gnu | FileCheck %s -check-prefix=CHECK-FP128-2
 ; RUN: llc < %s -mtriple=s390x-linux-gnu | FileCheck %s -check-prefix=CHECK-STACK
 
-declare void @bar(i8, i16, i32, i64, float, double, fp128, i64,
-                  float, double, i8, i16, i32, i64, float, double, fp128)
+declare void @bar(i8 noext, i16 noext, i32 noext, i64, float, double, fp128, i64,
+                  float, double, i8 noext, i16 noext, i32 noext, i64, float,
+                  double, fp128)
 
 ; There are two indirect fp128 slots, one at offset 224 (the first available
 ; byte after the outgoing arguments) and one immediately after it at 240.

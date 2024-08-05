@@ -2,7 +2,7 @@
 ; PR933
 ; REQUIRES: default_triple
 
-define fastcc i1 @test() {
+define fastcc zeroext i1 @test() {
         ret i1 true
 }
 

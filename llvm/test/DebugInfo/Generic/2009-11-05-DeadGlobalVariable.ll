@@ -4,7 +4,7 @@
 source_filename = "test/DebugInfo/Generic/2009-11-05-DeadGlobalVariable.ll"
 
 ; Function Attrs: nounwind readnone ssp uwtable
-define i32 @foo() #0 !dbg !6 {
+define signext i32 @foo() #0 !dbg !6 {
 entry:
   ret i32 42, !dbg !11
 }

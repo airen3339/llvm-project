@@ -2,7 +2,7 @@
 ; RUN:  | FileCheck %s -check-prefix=COST
 
 ; Check that all divide/remainder instructions are implemented by cheaper instructions.
-; RUN: llc < %s -mtriple=s390x-linux-gnu -mcpu=z13 -o - | FileCheck %s
+; RUN: llc < %s -mtriple=s390x-linux-gnu -mcpu=z13 -o - -no-argext-abi-check | FileCheck %s
 ; CHECK-NOT: dsg
 ; CHECK-NOT: dl
 

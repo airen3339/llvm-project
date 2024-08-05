@@ -648,6 +648,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(c);
 
   KEYWORD(attributes);
+  KEYWORD(noext);
   KEYWORD(sync);
   KEYWORD(async);
 
