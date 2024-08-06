@@ -195,7 +195,7 @@ LDC := $(CCC)
 cxx_linker = $(call cxx_compiler)
 
 # Note: LLVM_AR is currently required by API TestBSDArchives.py tests.
-# Assembly a full path to llvm-ar for give  n LLVM_TOOLS_DIR;
+# Assembly a full path to llvm-ar for given LLVM_TOOLS_DIR;
 # otherwise assume we have llvm-ar at the same place where is CC specified.
 LLVM_AR ?= $(call toolpath_base,llvm-ar,$(LLVM_TOOLS_DIR))
 
