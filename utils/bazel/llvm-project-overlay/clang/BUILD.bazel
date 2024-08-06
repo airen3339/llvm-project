@@ -2553,16 +2553,33 @@ cc_binary(
     ],
 )
 
+gentbl(
+    name = "ClangRenameTableGen",
+    strip_include_prefix = "tools/clang-rename",
+    tbl_outs = [(
+        "-gen-opt-parser-defs",
+        "tools/clang-rename/Opts.inc",
+    )],
+    tblgen = "//llvm:llvm-tblgen",
+    td_file = "tools/clang-rename/Opts.td",
+    td_srcs = [
+        "//llvm:include/llvm/Option/OptParser.td",
+        "include/clang/Tooling/CommonOptionsParser.td",
+    ],
+)
+
 cc_binary(
     name = "clang-rename",
     srcs = glob(["tools/clang-rename/*.cpp"]),
     stamp = 0,
     deps = [
+        ":ClangRenameTableGen",
         ":basic",
         ":frontend",
         ":rewrite",
         ":tooling",
         ":tooling_refactoring",
+        "//llvm:Option",
         "//llvm:Support",
     ],
 )
