@@ -15,8 +15,6 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Telemetry/Telemetry.h"
 
-using namespace llvm::telemetry;
-
 namespace lldb_private {
 
 struct DebuggerTelemetryInfo : public ::llvm::telemetry::TelemetryInfo {
@@ -29,8 +27,7 @@ struct DebuggerTelemetryInfo : public ::llvm::telemetry::TelemetryInfo {
 };
 
 struct TargetTelemetryInfo : public ::llvm::telemetry::TelemetryInfo {
-  // All entries emitted for the same SBTarget will have the same
-  // target_uuid.
+  // The same as the executable-module's UUID.
   std::string target_uuid;
   std::string file_format;
 
@@ -45,6 +42,16 @@ struct ClientTelemetryInfo : public ::llvm::telemetry::TelemetryInfo {
   std::string request_name;
   std::string error_msg;
   std::string ToString() const override;
+};
+
+struct CommandExitDescription : public ::llvm::telemetry::ExitDescription {
+  lldb::ReturnStatus ret_status;
+  CommandExitDescription(int ret_code, std::string ret_desc,
+                         lldb::ReturnStatus status) {
+    exit_code = ret_code;
+    description = std::move(ret_desc);
+    ret_status = status;
+  }
 };
 
 struct CommandTelemetryInfo : public ::llvm::telemetry::TelemetryInfo {
@@ -85,34 +92,32 @@ public:
 
   virtual ~LldbTelemeter() = default;
 
-  // void LogStartup(llvm::StringRef lldb_path,
-  //                 TelemetryInfo *entry) override;
-  // void LogExit(llvm::StringRef lldb_path, TelemetryInfo *entry)
-  // override;
-
   // Invoked upon process exit
   virtual void LogProcessExit(int status, llvm::StringRef exit_string,
-                              TelemetryEventStats stats,
+                              llvm::telemetry::TelemetryEventStats stats,
                               Target *target_ptr) = 0;
 
   // Invoked upon loading the main executable module
   // We log in a fire-n-forget fashion so that if the load
   // crashes, we don't lose the entry.
-  virtual void LogMainExecutableLoadStart(lldb::ModuleSP exec_mod,
-                                          TelemetryEventStats stats) = 0;
-  virtual void LogMainExecutableLoadEnd(lldb::ModuleSP exec_mod,
-                                        TelemetryEventStats stats) = 0;
+  virtual void
+  LogMainExecutableLoadStart(lldb::ModuleSP exec_mod,
+                             llvm::telemetry::TelemetryEventStats stats) = 0;
+  virtual void
+  LogMainExecutableLoadEnd(lldb::ModuleSP exec_mod,
+                           llvm::telemetry::TelemetryEventStats stats) = 0;
 
   // Invoked for each command
   // We log in a fire-n-forget fashion so that if the command execution
   // crashes, we don't lose the entry.
   virtual void LogCommandStart(llvm::StringRef uuid,
                                llvm::StringRef original_command,
-                               TelemetryEventStats stats,
+                               llvm::telemetry::TelemetryEventStats stats,
                                Target *target_ptr) = 0;
   virtual void LogCommandEnd(llvm::StringRef uuid, llvm::StringRef command_name,
                              llvm::StringRef command_args,
-                             TelemetryEventStats stats, Target *target_ptr,
+                             llvm::telemetry::TelemetryEventStats stats,
+                             Target *target_ptr,
                              CommandReturnObject *result) = 0;
 
   virtual std::string GetNextUUID() = 0;
@@ -147,7 +152,7 @@ public:
 //         there might have been lots of telemetry-entries that need to be
 //         sent already.
 //         This approach avoid losing log entries if LLDB crashes during init.
-TelemetryConfig *GetTelemetryConfig();
+llvm::telemetry::TelemetryConfig *GetTelemetryConfig();
 
 } // namespace lldb_private
 #endif // LLDB_CORE_TELEMETRY_H

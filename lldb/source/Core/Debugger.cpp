@@ -736,7 +736,8 @@ void Debugger::InstanceInitialize() {
 
 DebuggerSP Debugger::CreateInstance(lldb::LogOutputCallback log_callback,
                                     void *baton) {
-  SteadyTimePoint start_time = std::chrono::steady_clock::now();
+  llvm::telemetry::SteadyTimePoint start_time =
+      std::chrono::steady_clock::now();
   DebuggerSP debugger_sp(new Debugger(log_callback, baton));
   debugger_sp->stats.m_start = start_time;
   if (g_debugger_list_ptr && g_debugger_list_mutex_ptr) {
@@ -744,7 +745,8 @@ DebuggerSP Debugger::CreateInstance(lldb::LogOutputCallback log_callback,
     g_debugger_list_ptr->push_back(debugger_sp);
   }
   debugger_sp->InstanceInitialize();
-  TelemetryEventStats init_stats(start_time, std::chrono::steady_clock::now());
+  llvm::telemetry::TelemetryEventStats init_stats(
+      start_time, std::chrono::steady_clock::now());
   llvm::telemetry::TelemetryInfo entry;
   entry.stats = {start_time, std::chrono::steady_clock::now()};
   debugger_sp->m_telemeter->LogStartup(

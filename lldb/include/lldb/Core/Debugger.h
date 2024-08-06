@@ -40,6 +40,7 @@
 #include "lldb/lldb-private-enumerations.h"
 #include "lldb/lldb-private-types.h"
 #include "lldb/lldb-types.h"
+#include "llvm/Telemetry/Telemetry.h"
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
@@ -773,7 +774,7 @@ private:
 
   Debugger(const Debugger &) = delete;
   const Debugger &operator=(const Debugger &) = delete;
-  TelemetryEventStats stats;
+  llvm::telemetry::TelemetryEventStats stats;
 };
 
 } // namespace lldb_private

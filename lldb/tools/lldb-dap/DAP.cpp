@@ -6,11 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "DAP.h"
-#include "LLDBUtils.h"
-#include "lldb/API/SBStructuredData.h"
-#include "llvm/ADT/StringExtras.h"
-#include "llvm/Support/FormatVariadic.h"
 #include <chrono>
 #include <cstdarg>
 #include <fstream>

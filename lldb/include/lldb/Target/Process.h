@@ -57,6 +57,7 @@
 #include "lldb/Utility/UnimplementedError.h"
 #include "lldb/Utility/UserIDResolver.h"
 #include "lldb/lldb-private.h"
+#include "llvm/Telemetry/Telemetry.h"
 
 #include "llvm/ADT/AddressRanges.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -3287,7 +3288,7 @@ private:
   Process(const Process &) = delete;
   const Process &operator=(const Process &) = delete;
 
-  TelemetryEventStats m_event_stats;
+  llvm::telemetry::TelemetryEventStats m_event_stats;
 };
 
 /// RAII guard that should be acquired when an utility function is called within

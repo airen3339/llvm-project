@@ -17,7 +17,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
-#include <iostream>
 #include <string>
 #include <typeinfo>
 #include <utility>
@@ -34,6 +33,7 @@
 #include "lldb/Target/Statistics.h"
 #include "lldb/Utility/ConstString.h"
 #include "lldb/Utility/FileSpec.h"
+#include "lldb/Utility/LLDBLog.h"
 #include "lldb/Utility/UUID.h"
 #include "lldb/Version/Version.h"
 #include "lldb/lldb-enumerations.h"
@@ -47,6 +47,7 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/RandomNumberGenerator.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Telemetry/Telemetry.h"
 
 #ifdef HAS_VENDOR_TELEMETRY_PLUGINS
@@ -62,6 +63,8 @@ extern std::shared_ptr<lldb_private::LldbTelemeter>
 CreateVendorSpecificTelemeter(
     llvm::telemetry::TelemetryConfig *config) /*__attribute__((weak))*/;
 #endif
+
+using namespace llvm::telemetry;
 
 namespace lldb_private {
 
@@ -176,19 +179,20 @@ std::string CommandTelemetryInfo::ToString() const {
 }
 
 std::string MiscTelemetryInfo::ToString() const {
-  std::string ret =
-      TelemetryInfo::ToString() + "\n" + ("[MiscTelemetryInfo]\n") +
-      ("  target_uuid: " + target_uuid + "\n") + ("  meta_data:\n");
-
+  std::string ret;
+  llvm::raw_string_ostream ret_strm(ret);
+  ret_strm << TelemetryInfo::ToString() << "\n[MiscTelemetryInfo]\n"
+           << "  target_uuid: " << target_uuid + "\n"
+           << "  meta_data:\n";
   for (const auto &kv : meta_data) {
-    ret += ("    " + kv.first + ": " + kv.second + "\n");
+    ret_strm << "    " << kv.first << ": " << kv.second << "\n";
   }
   return ret;
 }
 
 class StreamTelemetryDestination : public TelemetryDestination {
 public:
-  StreamTelemetryDestination(std::ostream &os, std::string desc)
+  StreamTelemetryDestination(llvm::raw_ostream &os, std::string desc)
       : os(os), desc(desc) {}
   llvm::Error EmitEntry(const TelemetryInfo *entry) override {
     // Unless there exists a custom (vendor-defined) data-cleanup
@@ -207,7 +211,7 @@ public:
   std::string name() const override { return desc; }
 
 private:
-  std::ostream &os;
+  llvm::raw_ostream &os;
   const std::string desc;
 };
 
@@ -307,7 +311,8 @@ static std::string MakeUUID(lldb_private::Debugger *debugger) {
   std::string ret;
   uint8_t random_bytes[16];
   if (auto ec = llvm::getRandomBytes(random_bytes, 16)) {
-    std::cerr << "entropy source failure: " + ec.message();
+    LLDB_LOG(GetLog(LLDBLog::Object),
+             "Failed to generate random bytes for UUID: {0}", ec.message());
     // fallback to using timestamp + debugger ID.
     ret = std::to_string(
               std::chrono::steady_clock::now().time_since_epoch().count()) +
@@ -329,9 +334,11 @@ BasicTelemeter::CreateInstance(lldb_private::Debugger *debugger) {
   BasicTelemeter *ins = new BasicTelemeter(debugger);
   for (const std ::string &dest : config->additional_destinations) {
     if (dest == "stdout") {
-      ins->AddDestination(new StreamTelemetryDestination(std::cout, "stdout"));
+      ins->AddDestination(
+          new StreamTelemetryDestination(llvm::outs(), "stdout"));
     } else if (dest == "stderr") {
-      ins->AddDestination(new StreamTelemetryDestination(std::cerr, "stderr"));
+      ins->AddDestination(
+          new StreamTelemetryDestination(llvm::errs(), "stderr"));
     } else {
       // TODO: handle file paths
     }
@@ -342,11 +349,12 @@ BasicTelemeter::CreateInstance(lldb_private::Debugger *debugger) {
 
 void BasicTelemeter::EmitToDestinations(const TelemetryInfo *entry) {
   // TODO: can do this in a separate thread (need to own the ptrs!).
-  for (auto destination : m_destinations) {
-    auto err = destination->EmitEntry(entry);
+  for (TelemetryDestination *destination : m_destinations) {
+    llvm::Error err = destination->EmitEntry(entry);
     if (err) {
-      std::cerr << "error emitting to destination: " << destination->name()
-                << "\n";
+      LLDB_LOG(GetLog(LLDBLog::Object),
+               "Error emitting to destination(name = {0})",
+               destination->name());
     }
   }
 }
@@ -357,8 +365,9 @@ void BasicTelemeter::LogStartup(llvm::StringRef lldb_path,
   lldb_private::DebuggerTelemetryInfo startup_info =
       MakeBaseEntry<lldb_private::DebuggerTelemetryInfo>();
 
-  auto &resolver = lldb_private::HostInfo::GetUserIDResolver();
-  auto opt_username = resolver.GetUserName(lldb_private::HostInfo::GetUserID());
+  UserIDResolver &resolver = lldb_private::HostInfo::GetUserIDResolver();
+  std::optional<llvm::StringRef> opt_username =
+      resolver.GetUserName(lldb_private::HostInfo::GetUserID());
   if (opt_username)
     startup_info.username = *opt_username;
 
@@ -375,7 +384,6 @@ void BasicTelemeter::LogStartup(llvm::StringRef lldb_path,
     EmitToDestinations(&misc_info);
   }
 
-  std::cout << "emitting startup info\n";
   EmitToDestinations(&startup_info);
 
   // Optional part
@@ -383,7 +391,6 @@ void BasicTelemeter::LogStartup(llvm::StringRef lldb_path,
 }
 
 void BasicTelemeter::LogExit(llvm::StringRef lldb_path, TelemetryInfo *entry) {
-  std::cout << "debugger exiting at " << lldb_path.str() << "\n";
   // we should be shutting down the same instance that we started?!
   // llvm::Assert(startup_lldb_path == lldb_path.str());
 
@@ -420,7 +427,6 @@ void BasicTelemeter::LogProcessExit(int status, llvm::StringRef exit_string,
           : "";
   exit_info.exit_description = {status, exit_string.str()};
 
-  std::cout << "emitting process exit ...\n";
   EmitToDestinations(&exit_info);
 }
 
@@ -453,12 +459,8 @@ void BasicTelemeter::LogMainExecutableLoadEnd(lldb::ModuleSP exec_mod,
       exec_mod->GetFileSpec().GetPathAsConstString().GetCString();
   target_info.file_format = exec_mod->GetArchitecture().GetArchitectureName();
   target_info.target_uuid = exec_mod->GetUUID().GetAsString();
-  if (auto err = llvm::sys::fs::file_size(exec_mod->GetFileSpec().GetPath(),
-                                          target_info.binary_size)) {
-    // If there was error obtaining it, just reset the size to 0.
-    // Maybe log the error too?
-    target_info.binary_size = 0;
-  }
+  target_info.binary_size = exec_mod->GetObjectFile()->GetByteSize();
+
   EmitToDestinations(&target_info);
 
   // Collect some more info,  might be useful?
@@ -556,7 +558,6 @@ bool parse_field(llvm::StringRef str, llvm::StringRef label) {
   return false;
 }
 
-<<<<<<< HEAD
 llvm::telemetry::TelemetryConfig *MakeTelemetryConfig() {
   bool enable_telemetry = false;
   std::vector<std::string> additional_destinations;
@@ -586,7 +587,8 @@ llvm::telemetry::TelemetryConfig *MakeTelemetryConfig() {
         }
       }
     } else {
-      std::cerr << "Error reading config file at " << init_file.c_str() << "\n";
+      LLDB_LOG(GetLog(LLDBLog::Object), "Error reading config file at {0}",
+               init_file.c_str());
     }
   }
 

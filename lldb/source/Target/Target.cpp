@@ -64,6 +64,7 @@
 #include "lldb/Utility/State.h"
 #include "lldb/Utility/StreamString.h"
 #include "lldb/Utility/Timer.h"
+#include "llvm/Telemetry/Telemetry.h"
 
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SetVector.h"
@@ -1476,7 +1477,8 @@ void Target::SetExecutableModule(ModuleSP &executable_sp,
   Log *log = GetLog(LLDBLog::Target);
   ClearModules(false);
   if (executable_sp) {
-    TelemetryEventStats load_executable_stats(std::chrono::steady_clock::now());
+    llvm::telemetry::TelemetryEventStats load_executable_stats(
+        std::chrono::steady_clock::now());
     m_debugger.GetTelemeter()->LogMainExecutableLoadStart(
         executable_sp, load_executable_stats);
 

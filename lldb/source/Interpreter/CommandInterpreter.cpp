@@ -12,7 +12,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <typeinfo>
 #include <vector>
 
 #include "Commands/CommandObjectApropos.h"
@@ -60,6 +59,7 @@
 #include "lldb/Core/Telemetry.h"
 #include "lldb/Host/Config.h"
 #include "lldb/Interpreter/CommandObject.h"
+#include "llvm/Telemetry/Telemetry.h"
 
 #if LLDB_ENABLE_LIBEDIT
 #include "lldb/Host/Editline.h"
@@ -1852,7 +1852,8 @@ bool CommandInterpreter::HandleCommand(const char *command_line,
                                        LazyBool lazy_add_to_history,
                                        CommandReturnObject &result,
                                        bool force_repeat_command) {
-  TelemetryEventStats command_stats(std::chrono::steady_clock::now());
+  llvm::telemetry::TelemetryEventStats command_stats(
+      std::chrono::steady_clock::now());
   auto telemeter = GetDebugger().GetTelemeter();
   // Generate a UUID for this command so the logger can match
   // the start/end entries correctly.
