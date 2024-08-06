@@ -1110,7 +1110,7 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
     unsigned DstEltSize = Dst->getScalarSizeInBits();
     InstructionCost Cost = 0;
     if ((SrcEltSize == 16) &&
-        (!ST->hasVInstructionsF16() || ((DstEltSize >> 1) > SrcEltSize))) {
+        (!ST->hasVInstructionsF16() || ((DstEltSize / 2) > SrcEltSize))) {
       // If the target only supports vfhmin or it is fp16-to-i64 conversion
       // pre-widening to f32 and then convert f32 to integer
       VectorType *VecF32Ty =
@@ -1131,10 +1131,10 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
     else { // (SrcEltSize > DstEltSize)
       // First do a narrowing conversion to an integer half the size, then
       // truncate if needed.
-      MVT ElementVT = MVT::getIntegerVT(SrcEltSize >> 1);
+      MVT ElementVT = MVT::getIntegerVT(SrcEltSize / 2);
       MVT VecVT = DstLT.second.changeVectorElementType(ElementVT);
       Cost += getRISCVInstructionCost(FNCVT, VecVT, CostKind);
-      if ((SrcEltSize >> 1) > DstEltSize) {
+      if ((SrcEltSize / 2) > DstEltSize) {
         Type *VecTy = EVT(VecVT).getTypeForEVT(Dst->getContext());
         Cost +=
             getCastInstrCost(Instruction::Trunc, Dst, VecTy, CCH, CostKind, I);
@@ -1153,7 +1153,7 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
 
     InstructionCost Cost = 0;
     if ((DstEltSize == 16) &&
-        (!ST->hasVInstructionsF16() || ((SrcEltSize >> 1) > DstEltSize))) {
+        (!ST->hasVInstructionsF16() || ((SrcEltSize / 2) > DstEltSize))) {
       // If the target only supports vfhmin or it is i64-to-fp16 conversion
       // it is converted to f32 and then converted to f16
       VectorType *VecF32Ty =
@@ -1170,8 +1170,8 @@ InstructionCost RISCVTTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
     if (DstEltSize == SrcEltSize)
       Cost += getRISCVInstructionCost(FCVT, DstLT.second, CostKind);
     else if (DstEltSize > SrcEltSize) {
-      if ((DstEltSize >> 1) > SrcEltSize) {
-        SrcEltSize = DstEltSize >> 1;
+      if ((DstEltSize / 2) > SrcEltSize) {
+        SrcEltSize = DstEltSize / 2;
         VectorType *VecTy =
             VectorType::get(IntegerType::get(Dst->getContext(), SrcEltSize),
                             cast<VectorType>(Dst)->getElementCount());
