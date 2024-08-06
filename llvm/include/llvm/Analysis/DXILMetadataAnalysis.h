@@ -22,15 +22,18 @@ namespace llvm {
 namespace dxil {
 
 struct ModuleMetadataInfo {
-  VersionTuple DXILVersion;
-  Triple::OSType ShaderModel;
-  Triple::EnvironmentType ShaderStage;
+  VersionTuple DXILVersion{};
+  VersionTuple ValidatorVersion{};
+  VersionTuple ShaderModelVersion{};
+  Triple::EnvironmentType ShaderStage = Triple::UnknownEnvironment;
 
-  void dump(raw_ostream &OS = errs());
+  void init(Module &);
+  void dump(raw_ostream &OS = dbgs()) const;
 };
 
 } // namespace dxil
 
+// Module metadata analysis pass for new pass manager
 class DXILMetadataAnalysis : public AnalysisInfoMixin<DXILMetadataAnalysis> {
   friend AnalysisInfoMixin<DXILMetadataAnalysis>;
 
@@ -40,6 +43,7 @@ public:
   using Result = dxil::ModuleMetadataInfo;
   /// Gather module metadata info for the module \c M.
   dxil::ModuleMetadataInfo run(Module &M, ModuleAnalysisManager &AM);
+  dxil::ModuleMetadataInfo Data;
 };
 
 /// Printer pass for the \c DXILMetadataAnalysis results.
@@ -55,24 +59,22 @@ public:
   static bool isRequired() { return true; }
 };
 
-/// Wrapper pass to be used by other passes using legacy pass manager
-class DXILMetadataAnalysisWrapperPass : public ModulePass {
-  std::unique_ptr<dxil::ModuleMetadataInfo> ModuleMetadata;
+/// Legacy pass to be used by other passes using legacy pass manager
+class DXILMetadataAnalysisLegacyPass : public ModulePass {
+  dxil::ModuleMetadataInfo Data;
+  bool AnalysisDone = false;
 
 public:
   static char ID; // Class identification, replacement for typeinfo
 
-  DXILMetadataAnalysisWrapperPass();
-  ~DXILMetadataAnalysisWrapperPass() override;
+  DXILMetadataAnalysisLegacyPass();
+  ~DXILMetadataAnalysisLegacyPass() override;
 
-  const dxil::ModuleMetadataInfo &getModuleMetadata() const {
-    return *ModuleMetadata;
-  }
-  dxil::ModuleMetadataInfo &getModuleMetadata() { return *ModuleMetadata; }
+  const dxil::ModuleMetadataInfo &getModuleMetadata() const { return Data; }
+  dxil::ModuleMetadataInfo &getModuleMetadata() { return Data; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
-  void releaseMemory() override;
 
   void print(raw_ostream &OS, const Module *M) const override;
   void dump() const;
