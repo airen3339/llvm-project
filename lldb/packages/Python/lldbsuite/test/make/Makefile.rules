@@ -55,7 +55,10 @@ LLDB_BASE_DIR := $(THIS_FILE_DIR)/../../../../../
 # Also reset BUILDDIR value because "pwd" returns cygwin or msys path
 # which needs to be converted to windows path.
 #----------------------------------------------------------------------
+path_wrapper = $(1)
 ifeq "$(HOST_OS)" "Windows_NT"
+	path_wrapper = $(subst \,/,$(1))
+
 	# MinGW make gets $(windir) variable if launched from cmd.exe
 	# and $(WINDIR) if launched from MSYS2.
 	SHELL := $(or $(windir),$(WINDIR),C:\WINDOWS)\system32\cmd.exe
@@ -109,6 +112,110 @@ endif
 #----------------------------------------------------------------------
 ifeq "$(CC)" ""
 $(error "C compiler is not specified. Please run tests through lldb-dotest or lit")
+endif
+
+# Remove all " and ' characters from the path. Also remove surrounding space chars.
+cstrip = $(strip $(subst ",,$(subst ',,$(1))))
+
+# We can get CC compiler string in the following formats:
+#  [<tool>] <compiler>    - such as 'xrun clang', 'xrun /usr/bin/clang' & etc
+#
+# Where <compiler> could contain the following parts:
+#   <simple-name>[.<exe-ext>]                           - sucn as 'clang', 'clang.exe' ('clamg-cl.exe'?)
+#   <target-triple>-<simple-name>[.<exe-ext>]           - such as 'armv7-linux-gnueabi-gcc'
+#   <path>/<simple-name>[.<exe-ext>]                    - such as '/usr/bin/clang', 'c:\path\to\compiler\clang,exe'
+#   <path>/<target-triple>-<simple-name>[.<exe-ext>]    - such as '/usr/bin/clang', 'c:\path\to\compiler\clang,exe'
+
+# We need CC without anything around.
+override CC := $(call path_wrapper,$(call cstrip,$(CC)))
+
+CC_EXT := $(suffix $(CC))
+# Compiler name without extension
+CC_NAME := $(basename $(lastword $(subst /, ,$(CC))))
+# A kind of compiler (canonical name): clang, gcc, cc & etc.
+ifeq (,$(filter $(CC_NAME), clang-cl llvm-gcc))
+	CCC := $(or $(lastword $(subst -, ,$(CC_NAME))), $(CC_NAME))
+	# A triple prefix of compiler name: <armv7-none-linux-gnu->gcc
+	CC_PREFIX := $(if $(findstring -,$(CC_NAME)),$(subst -$(CCC),,$(CC_NAME)),)
+else
+	CCC := $(CC_NAME)
+	CC_PREFIX :=
+endif
+
+# Any trace of path within CC?
+# $(dir ) function returns './' for the empty strings, but we need to keep path empty.
+# Use this function on CC only if a path was specified with CC.
+ifneq (,$(findstring /,$(CC)))
+	CC_PATH := $(dir $(lastword $(CC)))
+	replace_cc_with = $(patsubst %/$(CC_NAME)$(CC_EXT),%/$(1)$(CC_EXT),$(CC))
+else
+	CC_PATH :=
+	replace_cc_with = $(patsubst $(CC_NAME)$(CC_EXT),$(1)$(CC_EXT),$(CC))
+endif
+
+# Function returns the tool/compiler name including the triple (or whatnever) prefix
+# if it is present in the original CC.
+cname_with_prefix = $(if $(CC_PREFIX),$(CC_PREFIX)-$(1),$(1))
+
+# These functions return the fully qualified tool name (compiler or whatnevet) based on the previously parsed CC,
+# given a simple tool (clang, gcc, objcopy & etc) name as arg.
+# The first arg is the simplyfied tool name
+# The second arg is a path to the tool (CC_PATH otherwise)
+toolpath_base = $(join $(or $(2),$(CC_PATH)),$(addsuffix $(EXE_EXT),$(1)))
+
+# A kind of C++ compiler. Get the counterpart C++ compiler based on CC/CCC.
+CXXC := $(strip $(if $(filter $(CCC), icc),icpc,\
+                $(if $(filter $(CCC), llvm-gcc),llvm-g++,\
+                $(if $(filter $(CCC), gcc),g++,\
+                $(if $(filter $(CCC), cc),c++,\
+                $(if $(filter $(CCC), clang),clang++,\
+                $(CCC)))))))
+# A name of C++ compiler including the prefix.
+CXX_NAME := $(call cname_with_prefix,$(CXXC))
+
+ifneq "$(LLVM_TOOLS_DIR)" ""
+    override LLVM_TOOLS_DIR := $(call path_wrapper,$(call cstrip,$(LLVM_TOOLS_DIR)))/
+endif
+
+ifeq "$(HOST_OS)" "Windows_NT"
+	wrap_quotes = $(QUOTE)$(1)$(QUOTE)
+	# This function enframes the full path with the platform specific quotes. This is necessary to run the c++ executable
+	# properly under 'sh' on Windows host (prevent the path breakage because of Windows style path separators).
+	cxx_compiler = $(call wrap_quotes,$(call replace_cc_with,$(CXX_NAME)))
+else
+	cxx_compiler = $(call replace_cc_with,$(CXX_NAME))
+endif
+
+# Always override the linker. Assign already normalized CC.
+LD = $(CC)
+# A kind of linker. It always gets retrieved from CC.
+LDC := $(CCC)
+
+# Function that returns the C++ linker, given kind of compiler (CCC or CXXC) as arg.
+cxx_linker = $(call cxx_compiler)
+
+# Note: LLVM_AR is currently required by API TestBSDArchives.py tests.
+# Assembly a full path to llvm-ar for given LLVM_TOOLS_DIR;
+# otherwise assume we have llvm-ar at the same place where is CC specified.
+LLVM_AR ?= $(call toolpath_base,llvm-ar,$(LLVM_TOOLS_DIR))
+
+ifneq "$(OS)" "Darwin"
+	# Use the llvm project tool instead of the system defaults.
+	# Note: do not override explicity specified tool from the cmd line.
+	ifdef USE_LLVM_TOOLS
+		override OBJCOPY := $(call toolpath_base,llvm-objcopy,$(LLVM_TOOLS_DIR))
+		override STRIP := $(call toolpath_base,llvm-strip,$(LLVM_TOOLS_DIR))
+		override ARCHIVER := $(call toolpath_base,llvm-ar,$(LLVM_TOOLS_DIR))
+		override AR = $(ARCHIVER)
+		override LLVM_AR = $(ARCHIVER)
+	endif
+	# Assembly a toolchain side tool cmd based on passed CC properties we parsed early.
+	ifneq (,$(filter $(CCC), clang gcc cc))
+		OBJCOPY ?= $(call replace_cc_with,$(call cname_with_prefix,objcopy))
+		STRIP ?= $(call replace_cc_with,$(call cname_with_prefix,strip))
+		ARCHIVER ?= $(call replace_cc_with,$(call cname_with_prefix,ar))
+		override AR = $(ARCHIVER)
+	endif
 endif
 
 #----------------------------------------------------------------------
@@ -273,7 +380,6 @@ endif
 
 CFLAGS += $(CFLAGS_EXTRAS)
 CXXFLAGS += -std=c++11 $(CFLAGS) $(ARCH_CXXFLAGS)
-LD = $(CC)
 # Copy common options to the linker flags (dwarf, arch. & etc).
 # Note: we get some 'garbage' options for linker here (such as -I, --isystem & etc).
 LDFLAGS += $(CFLAGS)
@@ -304,50 +410,6 @@ ifneq "$(DYLIB_NAME)" ""
 	else
 		DYLIB_FILENAME = lib$(DYLIB_NAME).so
 	endif
-endif
-
-# Function that returns the counterpart C++ compiler, given $(CC) as arg.
-cxx_compiler_notdir = $(if $(findstring icc,$(1)), \
-			$(subst icc,icpc,$(1)), \
-			$(if $(findstring llvm-gcc,$(1)), \
-				$(subst llvm-gcc,llvm-g++,$(1)), \
-				$(if $(findstring gcc,$(1)), \
-					$(subst gcc,g++,$(1)), \
-					$(subst cc,c++,$(1)))))
-cxx_compiler = $(if $(findstring /,$(1)),$(join $(dir $(1)), $(call cxx_compiler_notdir,$(notdir $(1)))),$(call cxx_compiler_notdir,$(1)))
-
-# Function that returns the C++ linker, given $(CC) as arg.
-cxx_linker_notdir = $(if $(findstring icc,$(1)), \
-			$(subst icc,icpc,$(1)), \
-			$(if $(findstring llvm-gcc,$(1)), \
-				$(subst llvm-gcc,llvm-g++,$(1)), \
-				$(if $(findstring gcc,$(1)), \
-					$(subst gcc,g++,$(1)), \
-					$(subst cc,c++,$(1)))))
-cxx_linker = $(if $(findstring /,$(1)),$(join $(dir $(1)), $(call cxx_linker_notdir,$(notdir $(1)))),$(call cxx_linker_notdir,$(1)))
-
-ifneq "$(OS)" "Darwin"
-	CLANG_OR_GCC := $(strip $(if $(findstring clang,$(CC)), \
-				$(findstring clang,$(CC)), \
-				$(if $(findstring gcc,$(CC)), \
-					$(findstring gcc,$(CC)), \
-					cc)))
-
-	CC_LASTWORD := $(strip $(lastword $(subst -, ,$(CC))))
-
-	replace_with = $(strip $(if $(findstring $(3),$(CC_LASTWORD)), \
-			$(subst $(3),$(1),$(2)), \
-			$(subst $(3),$(1),$(subst -$(CC_LASTWORD),,$(2)))))
-
-	ifeq "$(notdir $(CC))" "$(CC)"
-		replace_cc_with = $(call replace_with,$(1),$(CC),$(CLANG_OR_GCC))
-	else
-		replace_cc_with = $(join $(dir $(CC)),$(call replace_with,$(1),$(notdir $(CC)),$(CLANG_OR_GCC)))
-	endif
-
-	OBJCOPY ?= $(call replace_cc_with,objcopy)
-	ARCHIVER ?= $(call replace_cc_with,ar)
-	override AR = $(ARCHIVER)
 endif
 
 ifdef PIE
@@ -468,8 +530,8 @@ DYLIB_OBJECTS +=$(strip $(DYLIB_C_SOURCES:.c=.o))
 DYLIB_OBJECTS +=$(strip $(DYLIB_OBJC_SOURCES:.m=.o))
 ifneq "$(strip $(DYLIB_CXX_SOURCES))" ""
 	DYLIB_OBJECTS +=$(strip $(patsubst %.mm, %.o, $(DYLIB_CXX_SOURCES:.cpp=.o)))
-	CXX = $(call cxx_compiler,$(CC))
-	LD = $(call cxx_linker,$(CC))
+	CXX = $(call cxx_compiler)
+	gD = $(call cxx_linker)
 endif
 
 #----------------------------------------------------------------------
@@ -492,8 +554,8 @@ endif
 #----------------------------------------------------------------------
 ifneq "$(strip $(CXX_SOURCES))" ""
 	OBJECTS +=$(strip $(CXX_SOURCES:.cpp=.o))
-	CXX = $(call cxx_compiler,$(CC))
-	LD = $(call cxx_linker,$(CC))
+	CXX = $(call cxx_compiler)
+	LD = $(call cxx_linker)
 endif
 
 #----------------------------------------------------------------------
@@ -509,19 +571,19 @@ endif
 #----------------------------------------------------------------------
 ifneq "$(strip $(OBJCXX_SOURCES))" ""
 	OBJECTS +=$(strip $(OBJCXX_SOURCES:.mm=.o))
-	CXX = $(call cxx_compiler,$(CC))
-	LD = $(call cxx_linker,$(CC))
+	CXX = $(call cxx_compiler)
+	LD = $(call cxx_linker)
 	ifeq "$(findstring lobjc,$(LDFLAGS))" ""
 		LDFLAGS +=-lobjc
 	endif
 endif
 
-ifeq ($(findstring clang, $(CXX)), clang)
+ifeq ($(CCC), clang)
 	CXXFLAGS += --driver-mode=g++
 endif
 
 ifneq "$(CXX)" ""
-	ifeq ($(findstring clang, $(LD)), clang)
+	ifeq ($(LDC), clang)
 		LDFLAGS += --driver-mode=g++
 	endif
 endif
