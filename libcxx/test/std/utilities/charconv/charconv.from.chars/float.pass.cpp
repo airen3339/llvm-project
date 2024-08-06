@@ -372,7 +372,7 @@ struct test_fixed {
 
         assert(r.ec == std::errc::invalid_argument);
         assert(r.ptr == s.data());
-        assert(x = F(0.25));
+        assert(x == F(0.25));
       }
     }
 
@@ -560,7 +560,7 @@ struct test_scientific {
 
         assert(r.ec == std::errc::invalid_argument);
         assert(r.ptr == s.data());
-        assert(x = F(0.25));
+        assert(x == F(0.25));
       }
     }
     { // No exponent
@@ -756,7 +756,7 @@ struct test_general {
 
         assert(r.ec == std::errc::invalid_argument);
         assert(r.ptr == s.data());
-        assert(x = F(0.25));
+        assert(x == F(0.25));
       }
     }
 
