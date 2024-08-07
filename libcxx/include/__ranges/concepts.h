@@ -62,12 +62,7 @@ concept borrowed_range =
 template <range _Rp>
 using sentinel_t = decltype(ranges::end(std::declval<_Rp&>()));
 
-#  if _LIBCPP_STD_VER >= 23
-template <range _Rp>
-using const_iterator_t = decltype(ranges::cbegin(std::declval<_Rp&>()));
-template <range _Rp>
-using const_sentinel_t = decltype(ranges::cend(std::declval<_Rp&>()));
-#  endif // _LIBCPP_STD_VER >= 23
+// `const_iterator_t` and `const_sentinel_t` defined in <__ranges/const_access.h>
 
 template <range _Rp>
 using range_difference_t = iter_difference_t<iterator_t<_Rp>>;

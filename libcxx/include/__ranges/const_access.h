@@ -86,6 +86,12 @@ inline constexpr auto cbegin = __cbegin::__fn{};
 } // namespace __cpo
 } // namespace ranges
 
+// [range.range]
+namespace ranges {
+template <class _Rp>
+using const_iterator_t = decltype(ranges::cbegin(std::declval<_Rp&>()));
+}
+
 // [range.access.cend]
 namespace ranges {
 namespace __cend {
@@ -123,6 +129,13 @@ inline namespace __cpo {
 inline constexpr auto cend = __cend::__fn{};
 } // namespace __cpo
 } // namespace ranges
+
+// [range.range]
+namespace ranges {
+template <class _Rp>
+using const_sentinel_t = decltype(ranges::cend(std::declval<_Rp&>()));
+}
+
 
 // [range.access.crbegin]
 namespace ranges {
