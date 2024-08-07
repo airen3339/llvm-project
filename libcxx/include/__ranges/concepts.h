@@ -64,9 +64,9 @@ using sentinel_t = decltype(ranges::end(std::declval<_Rp&>()));
 
 #  if _LIBCPP_STD_VER >= 23
 template <range _Rp>
-using const_iterator_t = const_iterator<iterator_t<_Rp>>;
+using const_iterator_t = decltype(ranges::cbegin(std::declval<_Rp&>()));
 template <range _Rp>
-using const_sentinel_t = const_sentinel<sentinel_t<_Rp>>;
+using const_sentinel_t = decltype(ranges::cend(std::declval<_Rp&>()));
 #  endif // _LIBCPP_STD_VER >= 23
 
 template <range _Rp>
