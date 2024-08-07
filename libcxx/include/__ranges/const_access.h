@@ -136,7 +136,6 @@ template <class _Rp>
 using const_sentinel_t = decltype(ranges::cend(std::declval<_Rp&>()));
 }
 
-
 // [range.access.crbegin]
 namespace ranges {
 namespace __crbegin {
