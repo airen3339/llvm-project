@@ -1022,7 +1022,6 @@ static bool pushDepHeight(const DataDep &Dep, const MachineInstr &UseMI,
                           unsigned UseHeight, MIHeightMap &Heights,
                           const TargetSchedModel &SchedModel,
                           const TargetInstrInfo *TII) {
-  // Adjust height by Dep.DefMI latency.
   if (!Dep.DefMI->isTransient())
     UseHeight += computeOperandLatency(SchedModel, Dep.DefMI, Dep.DefOp, &UseMI,
                                        Dep.UseOp);
