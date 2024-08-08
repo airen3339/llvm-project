@@ -1,6 +1,6 @@
 ; RUN: opt -S -dxil-metadata-emit %s | FileCheck %s
 ; RUN: opt -S -dxil-prepare  %s | FileCheck %s  --check-prefix=REMOVE_EXTRA_ATTRIBUTE
-; RUN: opt -S -dxil-metadata-analysis-print -disable-output %s 2>&1 | FileCheck %s --check-prefix=ANALYSIS
+; RUN: opt -S -passes="print<dxil-metadata>" -disable-output %s 2>&1 | FileCheck %s --check-prefix=ANALYSIS
 
 target triple = "dxil-pc-shadermodel6.6-compute"
 

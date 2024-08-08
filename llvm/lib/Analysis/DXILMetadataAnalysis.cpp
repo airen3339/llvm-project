@@ -9,7 +9,6 @@
 #include "llvm/Analysis/DXILMetadataAnalysis.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
@@ -20,7 +19,7 @@
 using namespace llvm;
 using namespace dxil;
 
-void ModuleMetadataInfo::dump(raw_ostream &OS) const {
+void ModuleMetadataInfo::print(raw_ostream &OS) const {
   OS << "Shader Model Version : " << ShaderModelVersion.getAsString() << "\n";
   OS << "DXIL Version : " << DXILVersion.getAsString() << "\n";
   OS << "Shader Stage : " << Triple::getEnvironmentTypeName(ShaderStage)
@@ -28,7 +27,7 @@ void ModuleMetadataInfo::dump(raw_ostream &OS) const {
   OS << "Validator Version : " << ValidatorVersion.getAsString() << "\n";
 }
 
-void ModuleMetadataInfo::init(Module &M) {
+ModuleMetadataInfo::ModuleMetadataInfo(Module &M) {
   Triple TT(Triple(M.getTargetTriple()));
   DXILVersion = TT.getDXILVersion();
   ShaderModelVersion = TT.getOSVersion();
@@ -53,7 +52,7 @@ AnalysisKey DXILMetadataAnalysis::Key;
 
 llvm::dxil::ModuleMetadataInfo
 DXILMetadataAnalysis::run(Module &M, ModuleAnalysisManager &AM) {
-  Data.init(M);
+  ModuleMetadataInfo Data(M);
   return Data;
 }
 
@@ -61,91 +60,47 @@ PreservedAnalyses
 DXILMetadataAnalysisPrinterPass::run(Module &M, ModuleAnalysisManager &AM) {
   llvm::dxil::ModuleMetadataInfo &Data = AM.getResult<DXILMetadataAnalysis>(M);
 
-  Data.dump(OS);
+  Data.print(OS);
   return PreservedAnalyses::all();
 }
 
 //===----------------------------------------------------------------------===//
-// DXILMetadataAnalysisLegacyPass
+// DXILMetadataAnalysisWrapperPass
 
-DXILMetadataAnalysisLegacyPass::DXILMetadataAnalysisLegacyPass()
+DXILMetadataAnalysisWrapperPass::DXILMetadataAnalysisWrapperPass()
     : ModulePass(ID) {
-  initializeDXILMetadataAnalysisLegacyPassPass(
+  initializeDXILMetadataAnalysisWrapperPassPass(
       *PassRegistry::getPassRegistry());
 }
 
-DXILMetadataAnalysisLegacyPass::~DXILMetadataAnalysisLegacyPass() = default;
+DXILMetadataAnalysisWrapperPass::~DXILMetadataAnalysisWrapperPass() = default;
 
-void DXILMetadataAnalysisLegacyPass::getAnalysisUsage(AnalysisUsage &AU) const {
+void DXILMetadataAnalysisWrapperPass::getAnalysisUsage(
+    AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
-bool DXILMetadataAnalysisLegacyPass::runOnModule(Module &M) {
-  Data.init(M);
-  AnalysisDone = true;
+bool DXILMetadataAnalysisWrapperPass::runOnModule(Module &M) {
+  MetadataInfo.reset(new ModuleMetadataInfo(M));
   return false;
 }
 
-void DXILMetadataAnalysisLegacyPass::print(raw_ostream &OS,
-                                           const Module *) const {
-  if (!AnalysisDone) {
+void DXILMetadataAnalysisWrapperPass::releaseMemory() { MetadataInfo.reset(); }
+
+void DXILMetadataAnalysisWrapperPass::print(raw_ostream &OS,
+                                            const Module *) const {
+  if (!MetadataInfo) {
     OS << "No module metadata info has been built!\n";
     return;
   }
-  Data.dump();
+  MetadataInfo->print(dbgs());
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 LLVM_DUMP_METHOD
-void DXILMetadataAnalysisLegacyPass::dump() const { print(dbgs(), nullptr); }
+void DXILMetadataAnalysisWrapperPass::dump() const { print(dbgs(), nullptr); }
 #endif
 
-INITIALIZE_PASS(DXILMetadataAnalysisLegacyPass, "dxil-metadata-analysis",
+INITIALIZE_PASS(DXILMetadataAnalysisWrapperPass, "dxil-metadata-analysis",
                 "DXIL Module Metadata analysis", false, true)
-char DXILMetadataAnalysisLegacyPass::ID = 0;
-
-namespace {
-
-//===----------------------------------------------------------------------===//
-// Pass to print - for verification - of analysis information collected in
-// DXILMetadataAnalysisLegacyPass
-
-class DXILMetadataAnalysisLegacyPrinter : public ModulePass {
-public:
-  static char ID;
-
-  DXILMetadataAnalysisLegacyPrinter();
-
-  bool runOnModule(Module &M) override;
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
-};
-
-} // namespace
-
-DXILMetadataAnalysisLegacyPrinter::DXILMetadataAnalysisLegacyPrinter()
-    : ModulePass(ID) {
-  initializeDXILMetadataAnalysisLegacyPrinterPass(
-      *PassRegistry::getPassRegistry());
-}
-
-void DXILMetadataAnalysisLegacyPrinter::getAnalysisUsage(
-    AnalysisUsage &AU) const {
-  AU.setPreservesAll();
-  AU.addRequired<DXILMetadataAnalysisLegacyPass>();
-}
-
-bool DXILMetadataAnalysisLegacyPrinter::runOnModule(Module &M) {
-  auto &MMI = getAnalysis<DXILMetadataAnalysisLegacyPass>();
-  MMI.print(errs(), nullptr);
-  return false;
-}
-
-INITIALIZE_PASS_BEGIN(DXILMetadataAnalysisLegacyPrinter,
-                      "dxil-metadata-analysis-print",
-                      "Print DXIL Module Metadata Analysis", false, false)
-INITIALIZE_PASS_DEPENDENCY(DXILMetadataAnalysisLegacyPass)
-INITIALIZE_PASS_END(DXILMetadataAnalysisLegacyPrinter,
-                    "dxil-metadata-analysis-print",
-                    "Print DXIL Module Metadata Analysis", false, false)
-
-char DXILMetadataAnalysisLegacyPrinter::ID = 0;
+char DXILMetadataAnalysisWrapperPass::ID = 0;

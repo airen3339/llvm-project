@@ -1,5 +1,5 @@
 ; RUN: opt -S -dxil-metadata-emit %s | FileCheck %s
-; RUN: opt -S -dxil-metadata-analysis-print -disable-output %s 2>&1 | FileCheck %s --check-prefix=ANALYSIS
+; RUN: opt -S -passes="print<dxil-metadata>" -disable-output %s 2>&1 | FileCheck %s --check-prefix=ANALYSIS
 target triple = "dxil-pc-shadermodel6.0-vertex"
 
 ; CHECK: !dx.version = !{![[DXVER:[0-9]+]]}

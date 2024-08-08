@@ -9,13 +9,12 @@
 #ifndef LLVM_ANALYSIS_DXILMETADATA_H
 #define LLVM_ANALYSIS_DXILMETADATA_H
 
-#include "llvm/ADT/MapVector.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Pass.h"
-#include "llvm/Support/DXILABI.h"
 #include "llvm/Support/VersionTuple.h"
 #include "llvm/TargetParser/Triple.h"
+#include <memory>
 
 namespace llvm {
 
@@ -27,8 +26,8 @@ struct ModuleMetadataInfo {
   VersionTuple ShaderModelVersion{};
   Triple::EnvironmentType ShaderStage = Triple::UnknownEnvironment;
 
-  void init(Module &);
-  void dump(raw_ostream &OS = dbgs()) const;
+  ModuleMetadataInfo(Module &);
+  void print(raw_ostream &OS) const;
 };
 
 } // namespace dxil
@@ -43,7 +42,6 @@ public:
   using Result = dxil::ModuleMetadataInfo;
   /// Gather module metadata info for the module \c M.
   dxil::ModuleMetadataInfo run(Module &M, ModuleAnalysisManager &AM);
-  dxil::ModuleMetadataInfo Data;
 };
 
 /// Printer pass for the \c DXILMetadataAnalysis results.
@@ -59,22 +57,24 @@ public:
   static bool isRequired() { return true; }
 };
 
-/// Legacy pass to be used by other passes using legacy pass manager
-class DXILMetadataAnalysisLegacyPass : public ModulePass {
-  dxil::ModuleMetadataInfo Data;
-  bool AnalysisDone = false;
+/// Legacy pass
+class DXILMetadataAnalysisWrapperPass : public ModulePass {
+  std::unique_ptr<dxil::ModuleMetadataInfo> MetadataInfo;
 
 public:
   static char ID; // Class identification, replacement for typeinfo
 
-  DXILMetadataAnalysisLegacyPass();
-  ~DXILMetadataAnalysisLegacyPass() override;
+  DXILMetadataAnalysisWrapperPass();
+  ~DXILMetadataAnalysisWrapperPass() override;
 
-  const dxil::ModuleMetadataInfo &getModuleMetadata() const { return Data; }
-  dxil::ModuleMetadataInfo &getModuleMetadata() { return Data; }
+  const dxil::ModuleMetadataInfo &getModuleMetadata() const {
+    return *MetadataInfo;
+  }
+  dxil::ModuleMetadataInfo &getModuleMetadata() { return *MetadataInfo; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
+  void releaseMemory() override;
 
   void print(raw_ostream &OS, const Module *M) const override;
   void dump() const;
