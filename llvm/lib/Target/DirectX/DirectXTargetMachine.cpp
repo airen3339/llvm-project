@@ -45,6 +45,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeDirectXTarget() {
   initializeWriteDXILPassPass(*PR);
   initializeDXContainerGlobalsPass(*PR);
   initializeDXILOpLoweringLegacyPass(*PR);
+  initializeDXILMetadataAnalysisLegacyPrinterPass(*PR);
   initializeDXILTranslateMetadataPass(*PR);
   initializeDXILResourceMDWrapperPass(*PR);
   initializeShaderFlagsAnalysisWrapperPass(*PR);

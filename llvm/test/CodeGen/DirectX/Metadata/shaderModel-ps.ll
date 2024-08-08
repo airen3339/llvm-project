@@ -1,8 +1,14 @@
 ; RUN: opt -S -dxil-metadata-emit %s | FileCheck %s
+; RUN: opt -S -dxil-metadata-analysis-print -disable-output %s 2>&1 | FileCheck %s --check-prefix=ANALYSIS
 target triple = "dxil-pc-shadermodel5.0-pixel"
 
 ; CHECK: !dx.shaderModel = !{![[SM:[0-9]+]]}
 ; CHECK: ![[SM]] = !{!"ps", i32 5, i32 0}
+
+; ANALYSIS: Shader Model Version : 5.0
+; ANALYSIS: DXIL Version : 1.0
+; ANALYSIS: Shader Stage : pixel
+; ANALYSIS: Validator Version : 1.0
 
 define void @entry() #0 {
 entry:
