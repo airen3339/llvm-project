@@ -946,7 +946,7 @@ public:
         callee(functionDecl(hasAttr(attr::UnsafeBufferUsage)));
 
     return stmt(anyOf(callExpr(HasUnsafeFnDecl).bind(OpTag),
-                           memberExpr(HasUnsafeFielDecl).bind(OpTag)));
+                      memberExpr(HasUnsafeFielDecl).bind(OpTag)));
   }
 
   void handleUnsafeOperation(UnsafeBufferUsageHandler &Handler,
