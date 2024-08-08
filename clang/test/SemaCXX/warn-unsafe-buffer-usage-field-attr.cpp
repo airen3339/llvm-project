@@ -69,16 +69,15 @@ void test_attribute_field_deref_chain(B b) {
   foo(b.buf); //expected-warning{{field 'buf' prone to unsafe buffer manipulation}}
 }
 
-void test_safe_writes(std::span<int> sp) {
+void test_writes_from_span(std::span<int> sp) {
   A a;
-  // TODO: We should not warn for safe assignments from hardened types
   a.ptr = sp.data(); //expected-warning{{field 'ptr' prone to unsafe buffer manipulation}}
   a.sz = sp.size();
 
   a.ptr = nullptr; // expected-warning{{field 'ptr' prone to unsafe buffer manipulation}}
 }
 
-void test_safe_reads(A a, A b) {
+void test_reads_to_span(A a, A b) {
   //expected-warning@+1{{the two-parameter std::span construction is unsafe as it can introduce mismatch between buffer size and the bound information}}
   std::span<int> sp {a.ptr, a.sz}; //expected-warning{{field 'ptr' prone to unsafe buffer manipulation}}
 
@@ -175,6 +174,5 @@ struct C {
 void test_attribute_union(C c) {
   int *p = c.ptr.ptr1; //expected-warning{{field 'ptr1' prone to unsafe buffer manipulation}}
 
-  // TODO: Warn here about the field
   int address = c.ptr.ptr2;
 }

@@ -945,8 +945,8 @@ public:
     auto HasUnsafeFnDecl =
         callee(functionDecl(hasAttr(attr::UnsafeBufferUsage)));
 
-    return stmt(expr(anyOf(callExpr(HasUnsafeFnDecl).bind(OpTag),
-                           memberExpr(HasUnsafeFielDecl).bind(OpTag))));
+    return stmt(anyOf(callExpr(HasUnsafeFnDecl).bind(OpTag),
+                           memberExpr(HasUnsafeFielDecl).bind(OpTag)));
   }
 
   void handleUnsafeOperation(UnsafeBufferUsageHandler &Handler,
