@@ -764,7 +764,7 @@ static void updatePhysDepsDownwards(const MachineInstr *UseMI,
 
 /// Estimates the number of cycles elapsed between DefMI and UseMI if they're
 /// non-null and in the same BasicBlock. Returns std::nullopt when UseMI is in a
-/// different MBB than DefMI, or when it is a dangling MI.
+/// different MBB than DefMI.
 static std::optional<unsigned>
 estimateDefUseCycles(const TargetSchedModel &Sched, const MachineInstr *DefMI,
                      const MachineInstr *UseMI) {
@@ -780,13 +780,13 @@ estimateDefUseCycles(const TargetSchedModel &Sched, const MachineInstr *DefMI,
   const auto UseIt =
       llvm::find_if(ParentBB->instrs(),
                     [UseMI](const MachineInstr &MI) { return UseMI == &MI; });
-  assert(std::distance(DefIt, UseIt) > 0 &&
-         "Def expected to appear before use");
+
   unsigned NumMicroOps = 0;
   for (auto It = DefIt; It != UseIt; ++It) {
-    // In some cases, UseMI is a dangling MI beyond the end of the MBB.
+    // In cases where the UseMI is a PHI at the beginning of the MBB, compute
+    // MicroOps until the end of the MBB.
     if (It.isEnd())
-      return std::nullopt;
+      break;
 
     NumMicroOps += Sched.getNumMicroOps(&*It);
   }
