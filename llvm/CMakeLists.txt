@@ -824,21 +824,25 @@ if(MSVC)
   option(LLVM_BUILD_LLVM_C_DYLIB "Build libllvm-c re-export library (Darwin only)" OFF)
 endif()
 
+set(CAN_BUILD_LLVM_DYLIB Off)
+if(NOT MSVC OR LLVM_BUILD_LLVM_DYLIB_VIS)
+  set(CAN_BUILD_LLVM_DYLIB On)
+endif()
+
+CMAKE_DEPENDENT_OPTION(LLVM_LINK_LLVM_DYLIB "Link tools against the libllvm dynamic library" OFF
+                       "CAN_BUILD_LLVM_DYLIB" OFF)
+
 set(LLVM_BUILD_LLVM_DYLIB_default OFF)
 if(LLVM_LINK_LLVM_DYLIB OR LLVM_BUILD_LLVM_C_DYLIB)
   set(LLVM_BUILD_LLVM_DYLIB_default ON)
 endif()
-
-set(CAN_BUILD_LLVM_DYLIB NOT MSVC OR LLVM_BUILD_LLVM_DYLIB_VIS)
 CMAKE_DEPENDENT_OPTION(LLVM_BUILD_LLVM_DYLIB "Build libllvm dynamic library" ${LLVM_BUILD_LLVM_DYLIB_default}
                        "CAN_BUILD_LLVM_DYLIB" OFF)
-CMAKE_DEPENDENT_OPTION(LLVM_LINK_LLVM_DYLIB "Link tools against the libllvm dynamic library"  OFF
-                       "CAN_BUILD_LLVM_DYLIB" OFF)
 
-CMAKE_DEPENDENT_OPTION(LLVM_DYLIB_EXPORT_INLINES OFF
-  "Force inline members of classes to be DLL exported when
-   building with clang-cl so the libllvm DLL is compatible with MSVC"
-   "MSVC;LLVM_BUILD_LLVM_DYLIB_VIS" OFF)
+CMAKE_DEPENDENT_OPTION(LLVM_DYLIB_EXPORT_INLINES "Force inline members of classes to be DLL exported when
+                       building with clang-cl so the libllvm DLL is compatible with MSVC"
+                       OFF
+                       "MSVC;LLVM_BUILD_LLVM_DYLIB_VIS" OFF)
 
 # Build llvm dynamic library with explicit symbol visibility on windows and default hidden symbol visibility on Linux
 if(LLVM_BUILD_LLVM_DYLIB_VIS)
