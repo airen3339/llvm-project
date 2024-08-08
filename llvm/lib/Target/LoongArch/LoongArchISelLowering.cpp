@@ -361,6 +361,9 @@ LoongArchTargetLowering::LoongArchTargetLowering(const TargetMachine &TM,
   setPrefFunctionAlignment(Subtarget.getPrefFunctionAlignment());
   setPrefLoopAlignment(Subtarget.getPrefLoopAlignment());
   setMaxBytesForAlignment(Subtarget.getMaxBytesForAlignment());
+
+  // Set scheduler.
+  setSchedulingPreference(Sched::RegPressure);
 }
 
 bool LoongArchTargetLowering::isOffsetFoldingLegal(
