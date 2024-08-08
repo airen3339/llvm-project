@@ -843,20 +843,34 @@ endif()
 
 if(MSVC)
   option(LLVM_BUILD_LLVM_C_DYLIB "Build LLVM-C.dll (Windows only)" ON)
-  # Set this variable to OFF here so it can't be set with a command-line
-  # argument.
-  set (LLVM_LINK_LLVM_DYLIB OFF)
+  if(NOT LLVM_BUILD_LLVM_DYLIB_VIS)
+    # Set this variable to OFF here so it can't be set with a command-line
+    # argument.
+    set (LLVM_LINK_LLVM_DYLIB OFF)
+  endif()
   if (BUILD_SHARED_LIBS)
     message(FATAL_ERROR "BUILD_SHARED_LIBS options is not supported on Windows.")
   endif()
-else()
-  option(LLVM_LINK_LLVM_DYLIB "Link tools against the libllvm dynamic library" OFF)
+ else()
   option(LLVM_BUILD_LLVM_C_DYLIB "Build libllvm-c re-export library (Darwin only)" OFF)
+endif()
+
+if(NOT MSVC OR LLVM_BUILD_LLVM_DYLIB_VIS)
+  option(LLVM_LINK_LLVM_DYLIB "Link tools against the libllvm dynamic library" OFF)
   set(LLVM_BUILD_LLVM_DYLIB_default OFF)
   if(LLVM_LINK_LLVM_DYLIB OR LLVM_BUILD_LLVM_C_DYLIB)
     set(LLVM_BUILD_LLVM_DYLIB_default ON)
   endif()
   option(LLVM_BUILD_LLVM_DYLIB "Build libllvm dynamic library" ${LLVM_BUILD_LLVM_DYLIB_default})
+endif()
+
+# Build llvm dynamic library with explicit symbol visibility on windows and default hidden symbol visibility on Linux
+if(LLVM_BUILD_LLVM_DYLIB_VIS)
+  set(LLVM_BUILD_LLVM_DYLIB ON)
+  if(MSVC)
+    option(LLVM_DYLIB_EXPORT_INLINES "Force inline members of class to be dll exported when
+           building with clang-cl so the libllvm dll is compatible with MSVC" OFF)
+  endif()
 endif()
 
 if (LLVM_LINK_LLVM_DYLIB AND BUILD_SHARED_LIBS)
