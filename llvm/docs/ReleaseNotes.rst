@@ -108,6 +108,7 @@ Changes to the RISC-V Backend
   fill value) rather than NOPs.
 * Added Syntacore SCR4 CPUs: ``-mcpu=syntacore-scr4-rv32/64``
 * ``-mcpu=sifive-p470`` was added.
+* Added Hazard3 CPU: ``-mcpu=hazard3`` (32-bit only).
 
 Changes to the WebAssembly Backend
 ----------------------------------
