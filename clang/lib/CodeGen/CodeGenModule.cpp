@@ -5491,6 +5491,10 @@ void CodeGenModule::EmitGlobalVarDefinition(const VarDecl *D,
         Init = llvm::UndefValue::get(getTypes().ConvertType(T));
       }
     } else {
+      if (!getLangOpts().CPlusPlus) {
+        // See comment in CodeGenFunction::AddInitializerToStaticVarDecl().
+        Initializer = zeroInitGlobalVarInitializer(Initializer);
+      }
       Init = Initializer;
       // We don't need an initializer, so remove the entry for the delayed
       // initializer position (just in case this entry was delayed) if we

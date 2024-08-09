@@ -335,6 +335,13 @@ llvm::Constant *CodeGenModule::getOrCreateStaticVarDecl(
   return Addr;
 }
 
+enum class IsPattern { No, Yes };
+
+static llvm::Constant *replaceUndef(CodeGenModule &CGM, IsPattern isPattern,
+                                    llvm::Constant *constant);
+static llvm::Constant *constWithPadding(CodeGenModule &CGM, IsPattern isPattern,
+                                        llvm::Constant *constant);
+
 /// AddInitializerToStaticVarDecl - Add the initializer for 'D' to the
 /// global variable that has already been created for it.  If the initializer
 /// has a different type than GV does, this may free GV and return a different
@@ -360,6 +367,60 @@ CodeGenFunction::AddInitializerToStaticVarDecl(const VarDecl &D,
       EmitCXXGuardedInit(D, GV, /*PerformInit*/true);
     }
     return GV;
+  }
+  if (!getLangOpts().CPlusPlus) {
+    // In C23 (N3096) $6.7.10:
+    // """
+    // If any object is initialized with an empty iniitializer, then it is
+    // subject to default initialization:
+    //  - if it is an aggregate, every member is initialized (recursively)
+    //  according to these rules,
+    //    and any padding is initialized to zero bits;
+    //  - if it is a union, the first named member is initialized (recursively)
+    //  according to these
+    //    rules, and any padding is initialized to zero bits.
+    //
+    // If the aggregate or union contains elements or members that are
+    // aggregates or unions, these rules apply recursively to the subaggregates
+    // or contained unions.
+    //
+    // If there are fewer initializers in a brace-enclosed list than there are
+    // elements or members of an aggregate, or fewer characters in a string
+    // literal used to initialize an array of known size than there are elements
+    // in the array, the remainder of the aggregate is subject to default
+    // initialization.
+    // """
+    //
+    // From my understanding, the standard is ambiguous in the following two
+    // areas:
+    // 1. For a union type with empty initializer, if the first named member is
+    // not the largest member, then the bytes comes after the first named member
+    // but before padding are left unspecified. An example is:
+    //    union U { int a; long long b;};
+    //    union U u = {};  // The first 4 bytes are 0, but 4-8 bytes are left
+    //    unspecified.
+    //
+    // 2. It only mentions padding for empty initializer, but doesn't mention
+    // padding for a non empty initialization list. And if the aggregation or
+    // union contains elements or members that are aggregates or unions, and
+    // some are non empty initializers, while others are empty initiailizers,
+    // the padding initialization is unclear. An example is:
+    //    struct S1 { int a; long long b; };
+    //    struct S2 { char c; struct S1 s1; };
+    //    // The values for paddings between s2.c and s2.s1.a, between s2.s1.a
+    //    and s2.s1.b are
+    //    // unclear.
+    //    struct S2 s2 = { 'c' };
+    //
+    // Here we choose to zero initiailize left bytes of a union type. Because
+    // projects like the Linux kernel are relying on this behavior. If we don't
+    // explicitly zero initialize them, the undef values can be optimized to
+    // return gabage data. We also choose to zero initialize paddings for
+    // aggregates and unions, no matter they are initialized by empty
+    // initializers or non empty initializers. This can provide a consistent
+    // behavior. So projects like the Linux kernel can rely on it.
+    Init = constWithPadding(CGM, IsPattern::No,
+                            replaceUndef(CGM, IsPattern::No, Init));
   }
 
 #ifndef NDEBUG
@@ -1038,8 +1099,6 @@ static bool shouldSplitConstantStore(CodeGenModule &CGM,
   return false;
 }
 
-enum class IsPattern { No, Yes };
-
 /// Generate a constant filled with either a pattern or zeroes.
 static llvm::Constant *patternOrZeroFor(CodeGenModule &CGM, IsPattern isPattern,
                                         llvm::Type *Ty) {
@@ -1048,9 +1107,6 @@ static llvm::Constant *patternOrZeroFor(CodeGenModule &CGM, IsPattern isPattern,
   else
     return llvm::Constant::getNullValue(Ty);
 }
-
-static llvm::Constant *constWithPadding(CodeGenModule &CGM, IsPattern isPattern,
-                                        llvm::Constant *constant);
 
 /// Helper function for constWithPadding() to deal with padding in structures.
 static llvm::Constant *constStructWithPadding(CodeGenModule &CGM,
@@ -1109,6 +1165,9 @@ static llvm::Constant *constWithPadding(CodeGenModule &CGM, IsPattern isPattern,
     if (ZeroInitializer) {
       OpValue = llvm::Constant::getNullValue(ElemTy);
       PaddedOp = constWithPadding(CGM, isPattern, OpValue);
+      // Avoid iterating large arrays with zero initializer when possible.
+      if (PaddedOp->getType() == ElemTy)
+        return constant;
     }
     for (unsigned Op = 0; Op != Size; ++Op) {
       if (!ZeroInitializer) {
@@ -1954,21 +2013,22 @@ void CodeGenFunction::EmitAutoVarInit(const AutoVarEmission &emission) {
       D.mightBeUsableInConstantExpressions(getContext())) {
     assert(!capturedByInit && "constant init contains a capturing block?");
     constant = ConstantEmitter(*this).tryEmitAbstractForInitializer(D);
-    if (constant && !constant->isZeroValue() &&
-        (trivialAutoVarInit !=
-         LangOptions::TrivialAutoVarInitKind::Uninitialized)) {
-      IsPattern isPattern =
-          (trivialAutoVarInit == LangOptions::TrivialAutoVarInitKind::Pattern)
-              ? IsPattern::Yes
-              : IsPattern::No;
-      // C guarantees that brace-init with fewer initializers than members in
-      // the aggregate will initialize the rest of the aggregate as-if it were
-      // static initialization. In turn static initialization guarantees that
-      // padding is initialized to zero bits. We could instead pattern-init if D
-      // has any ImplicitValueInitExpr, but that seems to be unintuitive
-      // behavior.
-      constant = constWithPadding(CGM, IsPattern::No,
-                                  replaceUndef(CGM, isPattern, constant));
+    if (constant && !constant->isZeroValue()) {
+      if (!getLangOpts().CPlusPlus) {
+        // See comment in CodeGenFunction::AddInitializerToStaticVarDecl().
+        constant = constWithPadding(CGM, IsPattern::No,
+                                    replaceUndef(CGM, IsPattern::No, constant));
+      } else if (trivialAutoVarInit !=
+                 LangOptions::TrivialAutoVarInitKind::Uninitialized) {
+        IsPattern isPattern =
+            (trivialAutoVarInit == LangOptions::TrivialAutoVarInitKind::Pattern)
+                ? IsPattern::Yes
+                : IsPattern::No;
+        // We could instead pattern-init padding if D has any
+        // ImplicitValueInitExpr, but that seems to be unintuitive behavior.
+        constant = constWithPadding(CGM, IsPattern::No,
+                                    replaceUndef(CGM, isPattern, constant));
+      }
     }
 
     if (D.getType()->isBitIntType() &&
@@ -2860,4 +2920,10 @@ CodeGenModule::getOMPAllocateAlignment(const VarDecl *VD) {
     }
   }
   return std::nullopt;
+}
+
+llvm::Constant *
+CodeGenModule::zeroInitGlobalVarInitializer(llvm::Constant *Init) {
+  return constWithPadding(*this, IsPattern::No,
+                          replaceUndef(*this, IsPattern::No, Init));
 }
