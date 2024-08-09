@@ -104,6 +104,16 @@ New check aliases
 Changes in existing checks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Improved :doc:`modernize-use-std-format
+  <clang-tidy/checks/modernize/use-std-format>` check to only expand macros
+  starting with ``PRI`` and ``__PRI`` from ``<inttypes.h>`` in the format
+  string.
+
+- Improved :doc:`modernize-use-std-print
+  <clang-tidy/checks/modernize/use-std-print>` check to only expand macros
+  starting with ``PRI`` and ``__PRI`` from ``<inttypes.h>`` in the format
+  string.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
