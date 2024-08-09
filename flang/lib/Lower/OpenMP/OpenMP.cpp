@@ -2042,6 +2042,7 @@ static void genCompositeDistributeParallelDoSimd(
     semantics::SemanticsContext &semaCtx, lower::pft::Evaluation &eval,
     mlir::Location loc, const ConstructQueue &queue,
     ConstructQueue::const_iterator item, DataSharingProcessor &dsp) {
+  assert(std::distance(item, queue.end()) == 4 && "Invalid leaf constructs");
   TODO(loc, "Composite DISTRIBUTE PARALLEL DO SIMD");
 }
 
@@ -2052,17 +2053,23 @@ static void genCompositeDistributeSimd(
     ConstructQueue::const_iterator item, DataSharingProcessor &dsp) {
   lower::StatementContext stmtCtx;
 
+  assert(std::distance(item, queue.end()) == 2 && "Invalid leaf constructs");
+  ConstructQueue::const_iterator distributeItem = item;
+  ConstructQueue::const_iterator simdItem = std::next(distributeItem);
+
   // Clause processing.
   mlir::omp::DistributeOperands distributeClauseOps;
-  genDistributeClauses(converter, semaCtx, stmtCtx, item->clauses, loc,
-                       distributeClauseOps);
+  genDistributeClauses(converter, semaCtx, stmtCtx, distributeItem->clauses,
+                       loc, distributeClauseOps);
 
   mlir::omp::SimdOperands simdClauseOps;
-  genSimdClauses(converter, semaCtx, item->clauses, loc, simdClauseOps);
+  genSimdClauses(converter, semaCtx, simdItem->clauses, loc, simdClauseOps);
 
+  // Pass the innermost leaf construct's clauses because that's where COLLAPSE
+  // is placed by construct decomposition.
   mlir::omp::LoopNestOperands loopNestClauseOps;
   llvm::SmallVector<const semantics::Symbol *> iv;
-  genLoopNestClauses(converter, semaCtx, eval, item->clauses, loc,
+  genLoopNestClauses(converter, semaCtx, eval, simdItem->clauses, loc,
                      loopNestClauseOps, iv);
 
   // Operation creation.
@@ -2084,7 +2091,7 @@ static void genCompositeDistributeSimd(
 
   assert(wrapperArgs.empty() &&
          "Block args for omp.simd and omp.distribute currently not expected");
-  genLoopNestOp(converter, symTable, semaCtx, eval, loc, queue, item,
+  genLoopNestOp(converter, symTable, semaCtx, eval, loc, queue, simdItem,
                 loopNestClauseOps, iv, /*wrapperSyms=*/{}, wrapperArgs,
                 llvm::omp::Directive::OMPD_distribute_simd, dsp);
 }
@@ -2098,19 +2105,25 @@ static void genCompositeDoSimd(lower::AbstractConverter &converter,
                                DataSharingProcessor &dsp) {
   lower::StatementContext stmtCtx;
 
+  assert(std::distance(item, queue.end()) == 2 && "Invalid leaf constructs");
+  ConstructQueue::const_iterator doItem = item;
+  ConstructQueue::const_iterator simdItem = std::next(doItem);
+
   // Clause processing.
   mlir::omp::WsloopOperands wsloopClauseOps;
   llvm::SmallVector<const semantics::Symbol *> wsloopReductionSyms;
   llvm::SmallVector<mlir::Type> wsloopReductionTypes;
-  genWsloopClauses(converter, semaCtx, stmtCtx, item->clauses, loc,
+  genWsloopClauses(converter, semaCtx, stmtCtx, doItem->clauses, loc,
                    wsloopClauseOps, wsloopReductionTypes, wsloopReductionSyms);
 
   mlir::omp::SimdOperands simdClauseOps;
-  genSimdClauses(converter, semaCtx, item->clauses, loc, simdClauseOps);
+  genSimdClauses(converter, semaCtx, simdItem->clauses, loc, simdClauseOps);
 
+  // Pass the innermost leaf construct's clauses because that's where COLLAPSE
+  // is placed by construct decomposition.
   mlir::omp::LoopNestOperands loopNestClauseOps;
   llvm::SmallVector<const semantics::Symbol *> iv;
-  genLoopNestClauses(converter, semaCtx, eval, item->clauses, loc,
+  genLoopNestClauses(converter, semaCtx, eval, simdItem->clauses, loc,
                      loopNestClauseOps, iv);
 
   // Operation creation.
@@ -2131,7 +2144,7 @@ static void genCompositeDoSimd(lower::AbstractConverter &converter,
 
   assert(wsloopReductionSyms.size() == wrapperArgs.size() &&
          "Number of symbols and wrapper block arguments must match");
-  genLoopNestOp(converter, symTable, semaCtx, eval, loc, queue, item,
+  genLoopNestOp(converter, symTable, semaCtx, eval, loc, queue, simdItem,
                 loopNestClauseOps, iv, wsloopReductionSyms, wrapperArgs,
                 llvm::omp::Directive::OMPD_do_simd, dsp);
 }
@@ -2141,12 +2154,43 @@ static void genCompositeTaskloopSimd(
     semantics::SemanticsContext &semaCtx, lower::pft::Evaluation &eval,
     mlir::Location loc, const ConstructQueue &queue,
     ConstructQueue::const_iterator item, DataSharingProcessor &dsp) {
+  assert(std::distance(item, queue.end()) == 2 && "Invalid leaf constructs");
   TODO(loc, "Composite TASKLOOP SIMD");
 }
 
 //===----------------------------------------------------------------------===//
 // Dispatch
 //===----------------------------------------------------------------------===//
+
+static bool genOMPCompositeDispatch(
+    lower::AbstractConverter &converter, lower::SymMap &symTable,
+    semantics::SemanticsContext &semaCtx, lower::pft::Evaluation &eval,
+    mlir::Location loc, const ConstructQueue &queue,
+    ConstructQueue::const_iterator item, DataSharingProcessor &dsp) {
+  using llvm::omp::Directive;
+  using lower::omp::matchLeafSequence;
+
+  if (matchLeafSequence(item, queue, Directive::OMPD_distribute_parallel_do))
+    genCompositeDistributeParallelDo(converter, symTable, semaCtx, eval, loc,
+                                     queue, item, dsp);
+  else if (matchLeafSequence(item, queue,
+                             Directive::OMPD_distribute_parallel_do_simd))
+    genCompositeDistributeParallelDoSimd(converter, symTable, semaCtx, eval,
+                                         loc, queue, item, dsp);
+  else if (matchLeafSequence(item, queue, Directive::OMPD_distribute_simd))
+    genCompositeDistributeSimd(converter, symTable, semaCtx, eval, loc, queue,
+                               item, dsp);
+  else if (matchLeafSequence(item, queue, Directive::OMPD_do_simd))
+    genCompositeDoSimd(converter, symTable, semaCtx, eval, loc, queue, item,
+                       dsp);
+  else if (matchLeafSequence(item, queue, Directive::OMPD_taskloop_simd))
+    genCompositeTaskloopSimd(converter, symTable, semaCtx, eval, loc, queue,
+                             item, dsp);
+  else
+    return false;
+
+  return true;
+}
 
 static void genOMPDispatch(lower::AbstractConverter &converter,
                            lower::SymMap &symTable,
@@ -2161,10 +2205,18 @@ static void genOMPDispatch(lower::AbstractConverter &converter,
                   llvm::omp::Association::Loop;
   if (loopLeaf) {
     symTable.pushScope();
+    // TODO: Use one DataSharingProcessor for each leaf of a composite
+    // construct.
     loopDsp.emplace(converter, semaCtx, item->clauses, eval,
                     /*shouldCollectPreDeterminedSymbols=*/true,
                     /*useDelayedPrivatization=*/false, &symTable);
     loopDsp->processStep1();
+
+    if (genOMPCompositeDispatch(converter, symTable, semaCtx, eval, loc, queue,
+                                item, *loopDsp)) {
+      symTable.popScope();
+      return;
+    }
   }
 
   switch (llvm::omp::Directive dir = item->id) {
@@ -2260,29 +2312,11 @@ static void genOMPDispatch(lower::AbstractConverter &converter,
     // that use this construct, add a single construct for now.
     genSingleOp(converter, symTable, semaCtx, eval, loc, queue, item);
     break;
-
-  // Composite constructs
-  case llvm::omp::Directive::OMPD_distribute_parallel_do:
-    genCompositeDistributeParallelDo(converter, symTable, semaCtx, eval, loc,
-                                     queue, item, *loopDsp);
-    break;
-  case llvm::omp::Directive::OMPD_distribute_parallel_do_simd:
-    genCompositeDistributeParallelDoSimd(converter, symTable, semaCtx, eval,
-                                         loc, queue, item, *loopDsp);
-    break;
-  case llvm::omp::Directive::OMPD_distribute_simd:
-    genCompositeDistributeSimd(converter, symTable, semaCtx, eval, loc, queue,
-                               item, *loopDsp);
-    break;
-  case llvm::omp::Directive::OMPD_do_simd:
-    genCompositeDoSimd(converter, symTable, semaCtx, eval, loc, queue, item,
-                       *loopDsp);
-    break;
-  case llvm::omp::Directive::OMPD_taskloop_simd:
-    genCompositeTaskloopSimd(converter, symTable, semaCtx, eval, loc, queue,
-                             item, *loopDsp);
-    break;
   default:
+    // Combined and composite constructs should have been split into a sequence
+    // of leaf constructs when building the construct queue.
+    assert(!llvm::omp::isLeafConstruct(dir) &&
+           "Unexpected compound construct.");
     break;
   }
 
