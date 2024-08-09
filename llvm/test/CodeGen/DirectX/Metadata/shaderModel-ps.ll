@@ -8,7 +8,7 @@ target triple = "dxil-pc-shadermodel5.0-pixel"
 ; ANALYSIS: Shader Model Version : 5.0
 ; ANALYSIS: DXIL Version : 1.0
 ; ANALYSIS: Shader Stage : pixel
-; ANALYSIS: Validator Version : 1.0
+; ANALYSIS: Validator Version : 0
 
 define void @entry() #0 {
 entry:

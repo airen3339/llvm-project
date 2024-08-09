@@ -26,7 +26,6 @@ struct ModuleMetadataInfo {
   VersionTuple ShaderModelVersion{};
   Triple::EnvironmentType ShaderStage = Triple::UnknownEnvironment;
 
-  ModuleMetadataInfo(Module &);
   void print(raw_ostream &OS) const;
 };
 

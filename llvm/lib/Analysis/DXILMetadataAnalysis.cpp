@@ -19,29 +19,31 @@
 using namespace llvm;
 using namespace dxil;
 
+namespace {
+ModuleMetadataInfo collectMetadataInfo(Module &M) {
+  ModuleMetadataInfo MMDAI;
+  Triple TT(Triple(M.getTargetTriple()));
+  MMDAI.DXILVersion = TT.getDXILVersion();
+  MMDAI.ShaderModelVersion = TT.getOSVersion();
+  MMDAI.ShaderStage = TT.getEnvironment();
+  NamedMDNode *Entry = M.getNamedMetadata("dx.valver");
+  if (Entry) {
+    auto *ValVerMD = cast<MDNode>(Entry->getOperand(0));
+    auto *MajorMD = mdconst::extract<ConstantInt>(ValVerMD->getOperand(0));
+    auto *MinorMD = mdconst::extract<ConstantInt>(ValVerMD->getOperand(1));
+    MMDAI.ValidatorVersion =
+        VersionTuple(MajorMD->getZExtValue(), MinorMD->getZExtValue());
+  }
+  return MMDAI;
+}
+} // namespace
+
 void ModuleMetadataInfo::print(raw_ostream &OS) const {
   OS << "Shader Model Version : " << ShaderModelVersion.getAsString() << "\n";
   OS << "DXIL Version : " << DXILVersion.getAsString() << "\n";
   OS << "Shader Stage : " << Triple::getEnvironmentTypeName(ShaderStage)
      << "\n";
   OS << "Validator Version : " << ValidatorVersion.getAsString() << "\n";
-}
-
-ModuleMetadataInfo::ModuleMetadataInfo(Module &M) {
-  Triple TT(Triple(M.getTargetTriple()));
-  DXILVersion = TT.getDXILVersion();
-  ShaderModelVersion = TT.getOSVersion();
-  ShaderStage = TT.getEnvironment();
-  NamedMDNode *Entry = M.getOrInsertNamedMetadata("dx.valver");
-  if (Entry->getNumOperands() == 0) {
-    ValidatorVersion = VersionTuple(1, 0);
-  } else {
-    auto *ValVerMD = cast<MDNode>(Entry->getOperand(0));
-    auto *MajorMD = mdconst::extract<ConstantInt>(ValVerMD->getOperand(0));
-    auto *MinorMD = mdconst::extract<ConstantInt>(ValVerMD->getOperand(1));
-    ValidatorVersion =
-        VersionTuple(MajorMD->getZExtValue(), MinorMD->getZExtValue());
-  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -52,8 +54,7 @@ AnalysisKey DXILMetadataAnalysis::Key;
 
 llvm::dxil::ModuleMetadataInfo
 DXILMetadataAnalysis::run(Module &M, ModuleAnalysisManager &AM) {
-  ModuleMetadataInfo Data(M);
-  return Data;
+  return collectMetadataInfo(M);
 }
 
 PreservedAnalyses
@@ -81,7 +82,7 @@ void DXILMetadataAnalysisWrapperPass::getAnalysisUsage(
 }
 
 bool DXILMetadataAnalysisWrapperPass::runOnModule(Module &M) {
-  MetadataInfo.reset(new ModuleMetadataInfo(M));
+  MetadataInfo.reset(new ModuleMetadataInfo(collectMetadataInfo(M)));
   return false;
 }
 

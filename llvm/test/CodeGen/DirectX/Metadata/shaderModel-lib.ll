@@ -8,5 +8,5 @@ target triple = "dxil-pc-shadermodel6.3-library"
 ; ANALYSIS: Shader Model Version : 6.3
 ; ANALYSIS: DXIL Version : 1.3
 ; ANALYSIS: Shader Stage : library
-; ANALYSIS: Validator Version : 1.0
+; ANALYSIS: Validator Version : 0
 

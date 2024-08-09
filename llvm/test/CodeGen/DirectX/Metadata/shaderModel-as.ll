@@ -8,7 +8,7 @@ target triple = "dxil-pc-shadermodel6-amplification"
 ; ANALYSIS: Shader Model Version : 6
 ; ANALYSIS: DXIL Version : 1.0
 ; ANALYSIS: Shader Stage : amplification
-; ANALYSIS: Validator Version : 1.0
+; ANALYSIS: Validator Version : 0
 
 define void @entry() #0 {
 entry:

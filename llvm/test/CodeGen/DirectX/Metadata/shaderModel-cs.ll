@@ -10,7 +10,7 @@ target triple = "dxil-pc-shadermodel6.6-compute"
 ; ANALYSIS: Shader Model Version : 6.6
 ; ANALYSIS: DXIL Version : 1.6
 ; ANALYSIS: Shader Stage : compute
-; ANALYSIS: Validator Version : 1.0
+; ANALYSIS: Validator Version : 0
 
 define void @entry() #0 {
 entry:
