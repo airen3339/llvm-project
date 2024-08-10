@@ -45,6 +45,7 @@ void NsanThread::ClearShadowForThreadStackAndTLS() {
 void NsanThread::Init() {
   SetThreadStackAndTls();
   ClearShadowForThreadStackAndTLS();
+  malloc_storage().Init();
 }
 
 void NsanThread::TSDDtor(void *tsd) {
@@ -53,6 +54,7 @@ void NsanThread::TSDDtor(void *tsd) {
 }
 
 void NsanThread::Destroy() {
+  malloc_storage().CommitBack();
   // We also clear the shadow on thread destruction because
   // some code may still be executing in later TSD destructors
   // and we don't want it to have any poisoned stack.
