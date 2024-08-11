@@ -59,6 +59,7 @@ class StoreInst;
 class Instruction;
 class Tracker;
 class AllocaInst;
+class AtomicCmpXchgInst;
 
 /// The base class for IR Change classes.
 class IRChangeBase {
@@ -210,6 +211,20 @@ public:
   void dump(raw_ostream &OS) const final { OS << "RemoveFromParent"; }
   LLVM_DUMP_METHOD void dump() const final;
 #endif // NDEBUG
+};
+
+class AllocaSetAllocatedType final : public IRChangeBase {
+  AllocaInst *Alloca;
+  Type *OrigType;
+
+public:
+  AllocaSetAllocatedType(AllocaInst *Alloca, Tracker &Tracker);
+  void revert(Tracker &Tracker) final;
+  void accept() final {}
+#ifndef NDEBUG
+  void dump(raw_ostream &OS) const final { OS << "AllocaSetAllocatedType"; }
+  LLVM_DUMP_METHOD void dump() const final;
+#endif
 };
 
 /// This class can be used for tracking most instruction setters.
