@@ -42,6 +42,25 @@ struct {
   { tgtok::Endif, "endif" },
   { tgtok::Define, "define" }
 };
+
+// Returns true if `MacroName` is a valid macro name. Valid macro names match
+// the regular expression [a-zA-Z_][0-9a-zA-Z_]* (see prepLexMacroName).
+bool IsValidMacroName(StringRef MacroName) {
+  if (MacroName.size() == 0)
+    return false;
+
+  char First = MacroName[0];
+  if (First != '_' && !isalpha(First))
+    return false;
+
+  // Match the rest of the identifier regex: [0-9a-zA-Z_]*
+  for (char Rest : MacroName.drop_front())
+    if (Rest != '_' && !isalpha(Rest) && !isdigit(Rest))
+      return false;
+
+  return true;
+}
+
 } // end anonymous namespace
 
 TGLexer::TGLexer(SourceMgr &SM, ArrayRef<std::string> Macros) : SrcMgr(SM) {
@@ -54,9 +73,15 @@ TGLexer::TGLexer(SourceMgr &SM, ArrayRef<std::string> Macros) : SrcMgr(SM) {
   PrepIncludeStack.push_back(
       std::make_unique<std::vector<PreprocessorControlDesc>>());
 
-  // Put all macros defined in the command line into the DefinedMacros set.
-  for (const std::string &MacroName : Macros)
+  // Add all macros defined on the command line to the DefinedMacros set.
+  // Check invalid macro names and print fatal error if we find one.
+  for (const std::string &MacroName : Macros) {
+    if (!IsValidMacroName(MacroName))
+      PrintFatalError(Twine("Invalid macro name `") + Twine(MacroName) +
+                      Twine("` specified on command line."));
+
     DefinedMacros.insert(MacroName);
+  }
 }
 
 SMLoc TGLexer::getLoc() const {
