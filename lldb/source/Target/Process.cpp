@@ -473,7 +473,8 @@ Process::Process(lldb::TargetSP target_sp, ListenerSP listener_sp,
       m_memory_cache(*this), m_allocated_memory_cache(*this),
       m_should_detach(false), m_next_event_action_up(), m_public_run_lock(),
       m_private_run_lock(), m_currently_handling_do_on_removals(false),
-      m_resume_requested(false), m_interrupt_tid(LLDB_INVALID_THREAD_ID),
+      m_resume_requested(false), m_last_run_direction(eRunForward),
+      m_interrupt_tid(LLDB_INVALID_THREAD_ID),
       m_finalizing(false), m_destructing(false),
       m_clear_thread_plans_on_stop(false), m_force_next_event_delivery(false),
       m_last_broadcast_state(eStateInvalid), m_destroy_in_process(false),
@@ -872,6 +873,7 @@ bool Process::HandleProcessStateChangedEvent(
             switch (thread_stop_reason) {
             case eStopReasonInvalid:
             case eStopReasonNone:
+            case eStopReasonHistoryBoundary:
               break;
 
             case eStopReasonSignal: {
@@ -1379,7 +1381,7 @@ void Process::SetPublicState(StateType new_state, bool restarted) {
   }
 }
 
-Status Process::Resume() {
+Status Process::Resume(RunDirection direction) {
   Log *log(GetLog(LLDBLog::State | LLDBLog::Process));
   LLDB_LOGF(log, "(plugin = %s) -- locking run lock", GetPluginName().data());
   if (!m_public_run_lock.TrySetRunning()) {
@@ -1388,7 +1390,7 @@ Status Process::Resume() {
              GetPluginName().data());
     return error;
   }
-  Status error = PrivateResume();
+  Status error = PrivateResume(direction);
   if (!error.Success()) {
     // Undo running state change
     m_public_run_lock.SetStopped();
@@ -1396,7 +1398,7 @@ Status Process::Resume() {
   return error;
 }
 
-Status Process::ResumeSynchronous(Stream *stream) {
+Status Process::ResumeSynchronous(Stream *stream, RunDirection direction) {
   Log *log(GetLog(LLDBLog::State | LLDBLog::Process));
   LLDB_LOGF(log, "Process::ResumeSynchronous -- locking run lock");
   if (!m_public_run_lock.TrySetRunning()) {
@@ -1409,7 +1411,7 @@ Status Process::ResumeSynchronous(Stream *stream) {
       Listener::MakeListener(ResumeSynchronousHijackListenerName.data()));
   HijackProcessEvents(listener_sp);
 
-  Status error = PrivateResume();
+  Status error = PrivateResume(direction);
   if (error.Success()) {
     StateType state =
         WaitForProcessToStop(std::nullopt, nullptr, true, listener_sp, stream,
@@ -3255,7 +3257,7 @@ Status Process::ConnectRemote(llvm::StringRef remote_url) {
   return error;
 }
 
-Status Process::PrivateResume() {
+Status Process::PrivateResume(RunDirection direction) {
   Log *log(GetLog(LLDBLog::Process | LLDBLog::Step));
   LLDB_LOGF(log,
             "Process::PrivateResume() m_stop_id = %u, public state: %s "
@@ -3270,6 +3272,11 @@ Status Process::PrivateResume() {
   // are running functions; we don't want to wipe out the real stop's info.
   if (!GetModID().IsLastResumeForUserExpression())
     ResetExtendedCrashInfoDict();
+
+  if (m_last_run_direction != direction) {
+    m_thread_list.DiscardThreadPlans();
+    m_last_run_direction = direction;
+  }
 
   Status error(WillResume());
   // Tell the process it is about to resume before the thread list
@@ -3288,7 +3295,7 @@ Status Process::PrivateResume() {
             "Process::PrivateResume PreResumeActions failed, not resuming.");
       } else {
         m_mod_id.BumpResumeID();
-        error = DoResume();
+        error = DoResume(direction);
         if (error.Success()) {
           DidResume();
           m_thread_list.DidResume();
@@ -3721,7 +3728,7 @@ bool Process::ShouldBroadcastEvent(Event *event_ptr) {
                     "from state: %s",
                     static_cast<void *>(event_ptr), StateAsCString(state));
           ProcessEventData::SetRestartedInEvent(event_ptr, true);
-          PrivateResume();
+          PrivateResume(m_last_run_direction);
         }
       } else {
         return_value = true;
@@ -4332,7 +4339,7 @@ void Process::ProcessEventData::DoOnRemoval(Event *event_ptr) {
     SetRestarted(true);
     // Use the private resume method here, since we aren't changing the run
     // lock state.
-    process_sp->PrivateResume();
+    process_sp->PrivateResume(process_sp->m_last_run_direction);
   } else {
     bool hijacked = process_sp->IsHijackedForEvent(eBroadcastBitStateChanged) &&
                     !process_sp->StateChangedIsHijackedForSynchronousResume();
