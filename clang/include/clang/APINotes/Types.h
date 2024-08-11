@@ -685,6 +685,8 @@ public:
   std::optional<std::string> SwiftRetainOp;
   std::optional<std::string> SwiftReleaseOp;
 
+  std::optional<std::string> SwiftConformsTo;
+
   std::optional<EnumExtensibilityKind> EnumExtensibility;
 
   TagInfo()
@@ -720,6 +722,9 @@ public:
     if (!SwiftReleaseOp)
       SwiftReleaseOp = RHS.SwiftReleaseOp;
 
+    if (!SwiftConformsTo)
+      SwiftConformsTo = RHS.SwiftConformsTo;
+
     if (!HasFlagEnum)
       setFlagEnum(RHS.isFlagEnum());
 
@@ -742,6 +747,7 @@ inline bool operator==(const TagInfo &LHS, const TagInfo &RHS) {
          LHS.SwiftImportAs == RHS.SwiftImportAs &&
          LHS.SwiftRetainOp == RHS.SwiftRetainOp &&
          LHS.SwiftReleaseOp == RHS.SwiftReleaseOp &&
+         LHS.SwiftConformsTo == RHS.SwiftConformsTo &&
          LHS.isFlagEnum() == RHS.isFlagEnum() &&
          LHS.isSwiftCopyable() == RHS.isSwiftCopyable() &&
          LHS.EnumExtensibility == RHS.EnumExtensibility;

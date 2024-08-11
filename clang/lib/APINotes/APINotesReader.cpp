@@ -572,6 +572,13 @@ public:
                                         ReleaseOpLength - 1);
       Data += ReleaseOpLength - 1;
     }
+    unsigned ConformsToLength =
+        endian::readNext<uint16_t, llvm::endianness::little>(Data);
+    if (ConformsToLength > 0) {
+      Info.SwiftConformsTo = std::string(reinterpret_cast<const char *>(Data),
+                                         ConformsToLength - 1);
+      Data += ConformsToLength - 1;
+    }
 
     ReadCommonTypeInfo(Data, Info);
     return Info;
