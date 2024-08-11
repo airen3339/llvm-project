@@ -9,6 +9,7 @@
 #ifndef LLVM_LIBC_SRC_CTYPE_ISALPHA_H
 #define LLVM_LIBC_SRC_CTYPE_ISALPHA_H
 
+#include "include/llvm-libc-types/locale_t.h"
 #include "src/__support/macros/config.h"
 
 namespace LIBC_NAMESPACE_DECL {
