@@ -482,6 +482,13 @@ size_t ObjectFile::CopyData(lldb::offset_t offset, size_t length,
   return m_data.CopyData(offset, length, dst);
 }
 
+llvm::ArrayRef<uint8_t> ObjectFile::PeekData(lldb::addr_t offset,
+                                             size_t length) const {
+  const uint8_t *data = m_data.PeekData(offset, length);
+  llvm::ArrayRef<uint8_t> array(data, length);
+  return array;
+}
+
 size_t ObjectFile::ReadSectionData(Section *section,
                                    lldb::offset_t section_offset, void *dst,
                                    size_t dst_len) {

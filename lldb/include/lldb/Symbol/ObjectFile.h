@@ -668,6 +668,11 @@ public:
   // transparent decompression of section contents.
   size_t CopyData(lldb::offset_t offset, size_t length, void *dst) const;
 
+  // Returns an ArrayRef of the data at the specified offset. If the offset is
+  // invalid, this function will return an empty ArrayRef. The length of the
+  // returned ArrayRef will be at most 'length' bytes.
+  llvm::ArrayRef<uint8_t> PeekData(lldb::addr_t offset, size_t length) const;
+
   // This function will transparently decompress section data if the section if
   // compressed.
   virtual size_t ReadSectionData(Section *section,
