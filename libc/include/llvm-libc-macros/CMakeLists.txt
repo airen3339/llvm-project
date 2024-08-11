@@ -289,3 +289,9 @@ add_macro_header(
   HDR
     dlfcn-macros.h
 )
+
+add_macro_header(
+  locale_macros
+  HDR
+    locale-macros.h
+)
