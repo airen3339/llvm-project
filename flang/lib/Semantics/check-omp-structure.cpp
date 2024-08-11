@@ -550,17 +550,21 @@ void OmpStructureChecker::CheckSIMDNest(const parser::OpenMPConstruct &c) {
                         }
                       }
                     },
-                    [&](const parser::OpenMPSimpleStandaloneConstruct &c) {
-                      const auto &dir{
-                          std::get<parser::OmpSimpleStandaloneDirective>(c.t)};
-                      if (dir.v == llvm::omp::Directive::OMPD_ordered) {
-                        const auto &clauses{
-                            std::get<parser::OmpClauseList>(c.t)};
-                        for (const auto &clause : clauses.v) {
-                          if (std::get_if<parser::OmpClause::Simd>(&clause.u)) {
-                            eligibleSIMD = true;
-                            break;
+                    [&](const parser::OpenMPStandaloneConstruct &c) {
+                      if(const auto &simpleConstruct = std::get_if<parser::OpenMPSimpleStandaloneConstruct>(&c.u)) {
+                        const auto &dir{
+                            std::get<parser::OmpSimpleStandaloneDirective>(simpleConstruct->t)};
+                        if (dir.v == llvm::omp::Directive::OMPD_ordered) {
+                          const auto &clauses{
+                              std::get<parser::OmpClauseList>(simpleConstruct->t)};
+                          for (const auto &clause : clauses.v) {
+                            if (std::get_if<parser::OmpClause::Simd>(&clause.u)) {
+                              eligibleSIMD = true;
+                              break;
+                            }
                           }
+                        } else if(dir.v == llvm::omp::Directive::OMPD_scan) {
+                          eligibleSIMD = true;
                         }
                       }
                     },
@@ -571,6 +575,7 @@ void OmpStructureChecker::CheckSIMDNest(const parser::OpenMPConstruct &c) {
                       const auto &beginDir{
                           std::get<parser::OmpLoopDirective>(beginLoopDir.t)};
                       if ((beginDir.v == llvm::omp::Directive::OMPD_simd) ||
+                          (beginDir.v == llvm::omp::Directive::OMPD_parallel_do_simd) ||
                           (beginDir.v == llvm::omp::Directive::OMPD_do_simd)) {
                         eligibleSIMD = true;
                       }
@@ -586,8 +591,9 @@ void OmpStructureChecker::CheckSIMDNest(const parser::OpenMPConstruct &c) {
     context_.Say(parser::FindSourceLocation(c),
         "The only OpenMP constructs that can be encountered during execution "
         "of a 'SIMD' region are the `ATOMIC` construct, the `LOOP` construct, "
-        "the `SIMD` construct and the `ORDERED` construct with the `SIMD` "
-        "clause."_err_en_US);
+        "the `SIMD` construct, the `SCAN` construct and the `ORDERED` "
+        "construct "
+        "with the `SIMD` clause."_err_en_US);
   }
 }
 
@@ -2531,6 +2537,8 @@ void OmpStructureChecker::CheckReductionModifier(
     switch (dirCtx.directive) {
     case llvm::omp::Directive::OMPD_do: // worksharing-loop
     case llvm::omp::Directive::OMPD_do_simd: // worksharing-loop simd
+    case llvm::omp::Directive::OMPD_parallel_do_simd: // worksharing-parallel-loop
+                                                      // simd
     case llvm::omp::Directive::OMPD_simd: // "simd"
       break;
     default:
