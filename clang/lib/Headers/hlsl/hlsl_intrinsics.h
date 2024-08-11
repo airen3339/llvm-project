@@ -916,7 +916,7 @@ float4 lerp(float4, float4, float4);
 /// \brief Returns the length of the specified floating-point vector.
 /// \param x [in] The vector of floats, or a scalar float.
 ///
-/// Length is based on the following formula: sqrt(x[0]^2 + x[1]^2 + …).
+/// Length is based on the following formula: sqrt(x[0]^2 + x[1]^2 + ï¿½).
 
 _HLSL_16BIT_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_length)
@@ -1736,30 +1736,30 @@ __attribute__((convergent)) uint WaveGetLaneIndex();
 #ifdef __HLSL_ENABLE_16_BIT
 _HLSL_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int16_t sign(int16_t);
+int sign(int16_t);
 _HLSL_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int16_t2 sign(int16_t2);
+int2 sign(int16_t2);
 _HLSL_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int16_t3 sign(int16_t3);
+int3 sign(int16_t3);
 _HLSL_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int16_t4 sign(int16_t4);
+int4 sign(int16_t4);
 #endif
 
 _HLSL_16BIT_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-half sign(half);
+int sign(half);
 _HLSL_16BIT_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-half2 sign(half2);
+int2 sign(half2);
 _HLSL_16BIT_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-half3 sign(half3);
+int3 sign(half3);
 _HLSL_16BIT_AVAILABILITY(shadermodel, 6.2)
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-half4 sign(half4);
+int4 sign(half4);
 
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
 int sign(int);
@@ -1771,30 +1771,30 @@ _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
 int4 sign(int4);
 
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-float sign(float);
+int sign(float);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-float2 sign(float2);
+int2 sign(float2);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-float3 sign(float3);
+int3 sign(float3);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-float4 sign(float4);
+int4 sign(float4);
 
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int64_t sign(int64_t);
+int sign(int64_t);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int64_t2 sign(int64_t2);
+int2 sign(int64_t2);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int64_t3 sign(int64_t3);
+int3 sign(int64_t3);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-int64_t4 sign(int64_t4);
+int4 sign(int64_t4);
 
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-double sign(double);
+int sign(double);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-double2 sign(double2);
+int2 sign(double2);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-double3 sign(double3);
+int3 sign(double3);
 _HLSL_BUILTIN_ALIAS(__builtin_hlsl_elementwise_sign)
-double4 sign(double4);
+int4 sign(double4);
 } // namespace hlsl
 #endif //_HLSL_HLSL_INTRINSICS_H_
