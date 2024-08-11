@@ -3193,6 +3193,14 @@ bool Target::SetSectionUnloaded(const lldb::SectionSP &section_sp,
 
 void Target::ClearAllLoadedSections() { m_section_load_history.Clear(); }
 
+lldb_private::SummaryStatistics& Target::GetSummaryStatisticsForProvider(lldb_private::ConstString summary_provider_name) {
+  return m_summary_statistics_cache.GetSummaryStatisticsForProviderName(summary_provider_name);
+}
+
+lldb_private::SummaryStatisticsCache& Target::GetSummaryStatisticsCache() {
+  return m_summary_statistics_cache;
+}
+
 void Target::SaveScriptedLaunchInfo(lldb_private::ProcessInfo &process_info) {
   if (process_info.IsScriptedProcess()) {
     // Only copy scripted process launch options.

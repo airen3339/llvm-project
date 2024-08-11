@@ -258,6 +258,7 @@ public:
 
   bool GetDebugUtilityExpression() const;
 
+
 private:
   std::optional<bool>
   GetExperimentalPropertyValue(size_t prop_idx,
@@ -1221,6 +1222,9 @@ public:
 
   void ClearAllLoadedSections();
 
+  lldb_private::SummaryStatistics& GetSummaryStatisticsForProvider(lldb_private::ConstString summary_provider_name);
+  lldb_private::SummaryStatisticsCache& GetSummaryStatisticsCache();
+
   /// Set the \a Trace object containing processor trace information of this
   /// target.
   ///
@@ -1554,6 +1558,7 @@ protected:
   std::string m_label;
   ModuleList m_images; ///< The list of images for this process (shared
                        /// libraries and anything dynamically loaded).
+  SummaryStatisticsCache m_summary_statistics_cache;
   SectionLoadHistory m_section_load_history;
   BreakpointList m_breakpoint_list;
   BreakpointList m_internal_breakpoint_list;
