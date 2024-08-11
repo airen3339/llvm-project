@@ -3976,6 +3976,15 @@ DeclResult Sema::ActOnVarTemplateSpecialization(
              << IsPartialSpecialization;
   }
 
+  if (const auto *DSA = VarTemplate->getAttr<DiagnoseSpecializationsAttr>()) {
+    if (auto Message = DSA->getMessage(); !Message.empty()) {
+      Diag(TemplateNameLoc, diag::warn_invalid_specialization_message)
+          << VarTemplate << Message;
+    } else {
+      Diag(TemplateNameLoc, diag::warn_invalid_specialization) << VarTemplate;
+    }
+  }
+
   // Check for unexpanded parameter packs in any of the template arguments.
   for (unsigned I = 0, N = TemplateArgs.size(); I != N; ++I)
     if (DiagnoseUnexpandedParameterPack(TemplateArgs[I],
@@ -8084,6 +8093,15 @@ DeclResult Sema::ActOnClassTemplateSpecialization(
       << (Name.getAsTemplateDecl() &&
           isa<TemplateTemplateParmDecl>(Name.getAsTemplateDecl()));
     return true;
+  }
+
+  if (const auto *DSA = ClassTemplate->getAttr<DiagnoseSpecializationsAttr>()) {
+    if (auto Message = DSA->getMessage(); !Message.empty()) {
+      Diag(TemplateNameLoc, diag::warn_invalid_specialization_message)
+          << ClassTemplate << Message;
+    } else {
+      Diag(TemplateNameLoc, diag::warn_invalid_specialization) << ClassTemplate;
+    }
   }
 
   bool isMemberSpecialization = false;
