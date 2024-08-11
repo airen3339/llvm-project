@@ -7060,7 +7060,7 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
       for (unsigned i = 0; i < NF; ++i) {
         SDValue LoadVal = DAG.getLoad(
             MVT::getScalableVectorVT(MVT::i8, NumElts), DL, DAG.getEntryNode(),
-            BasePtr, Load->getPointerInfo(), Align(8));
+            BasePtr, MachinePointerInfo(Load->getAddressSpace()), Align(8));
         Ret = DAG.getNode(RISCVISD::INSERT_SUBVECTOR, DL, VecTy, Ret, LoadVal,
                           DAG.getVectorIdxConstant(i, DL));
         BasePtr = DAG.getNode(ISD::ADD, DL, XLenVT, BasePtr, VROffset, Flag);
@@ -7106,7 +7106,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
         auto Extract = DAG.getNode(RISCVISD::EXTRACT_SUBVECTOR, DL,
                                    MVT::getScalableVectorVT(MVT::i8, NumElts),
                                    StoredVal, DAG.getVectorIdxConstant(i, DL));
-        Ret = DAG.getStore(Chain, DL, Extract, BasePtr, Store->getPointerInfo(),
+        Ret = DAG.getStore(Chain, DL, Extract, BasePtr,
+                           MachinePointerInfo(Store->getAddressSpace()),
                            Store->getOriginalAlign(),
                            Store->getMemOperand()->getFlags());
         Chain = Ret.getValue(0);
@@ -22195,11 +22196,10 @@ bool RISCVTargetLowering::lowerDeinterleaveIntrinsicToLoad(IntrinsicInst *DI,
     SmallVector<Type *, 2> AggrTypes{Factor, ResVTy};
     Return = PoisonValue::get(StructType::get(LI->getContext(), AggrTypes));
     Function *VecExtractFunc = Intrinsic::getDeclaration(
-        LI->getModule(), Intrinsic::riscv_vector_extract,
-        {ResVTy, VecTupTy, XLenTy});
+        LI->getModule(), Intrinsic::riscv_vector_extract, {ResVTy, VecTupTy});
     for (unsigned i = 0; i < Factor; ++i) {
       Value *VecExtract = Builder.CreateCall(
-          VecExtractFunc, {Vlseg, ConstantInt::get(XLenTy, i)});
+          VecExtractFunc, {Vlseg, ConstantInt::get(Builder.getInt32Ty(), i)});
       Return = Builder.CreateInsertValue(Return, VecExtract, i);
     }
   }
@@ -22260,13 +22260,12 @@ bool RISCVTargetLowering::lowerInterleaveIntrinsicToStore(IntrinsicInst *II,
     VL = Constant::getAllOnesValue(XLenTy);
 
     Function *VecInsertFunc = Intrinsic::getDeclaration(
-        SI->getModule(), Intrinsic::riscv_vector_insert,
-        {VecTupTy, InVTy, XLenTy});
+        SI->getModule(), Intrinsic::riscv_vector_insert, {VecTupTy, InVTy});
     Value *StoredVal = PoisonValue::get(VecTupTy);
     for (unsigned i = 0; i < Factor; ++i)
       StoredVal =
           Builder.CreateCall(VecInsertFunc, {StoredVal, II->getOperand(i),
-                                             ConstantInt::get(XLenTy, i)});
+                                             ConstantInt::get(Builder.getInt32Ty(), i)});
 
     Builder.CreateCall(VssegNFunc, {StoredVal, SI->getPointerOperand(), VL,
                                     ConstantInt::get(XLenTy, Log2_64(SEW))});

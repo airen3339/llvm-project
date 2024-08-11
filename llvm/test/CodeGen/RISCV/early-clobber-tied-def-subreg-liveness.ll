@@ -101,10 +101,10 @@ entry:
   %8 = tail call <vscale x 8 x i1> @llvm.riscv.vmsbc.nxv8i16.i16.i64(<vscale x 8 x i16> %6, i16 -15456, i64 2)
   %9 = tail call i64 @llvm.riscv.vsetvli.i64(i64 2, i64 1, i64 1)
   %10 = tail call <vscale x 8 x i16> @llvm.riscv.vsext.mask.nxv8i16.nxv8i8.i64(<vscale x 8 x i16> %0, <vscale x 8 x i8> %1, <vscale x 8 x i1> %8, i64 2, i64 0)
-  %v_0 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) poison, <vscale x 8 x i16> %10, i64 0)
-  %v_1 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_0, <vscale x 8 x i16> %2, i64 1)
-  %v_2 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_1, <vscale x 8 x i16> %3, i64 2)
-  %v_3 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_2, <vscale x 8 x i16> %4, i64 3)
+  %v_0 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) poison, <vscale x 8 x i16> %10, i32 0)
+  %v_1 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_0, <vscale x 8 x i16> %2, i32 1)
+  %v_2 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_1, <vscale x 8 x i16> %3, i32 2)
+  %v_3 = call target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_2, <vscale x 8 x i16> %4, i32 3)
   tail call void @llvm.riscv.vsseg4.nxv8i16.i64(target("riscv.vector.tuple", <vscale x 16 x i8>, 4) %v_3, ptr nonnull @var_47, i64 2, i64 4)
   ret void
 }
@@ -119,6 +119,6 @@ declare <vscale x 8 x i1> @llvm.riscv.vmsbc.nxv8i16.i16.i64(<vscale x 8 x i16>, 
 
 declare <vscale x 8 x i16> @llvm.riscv.vsext.mask.nxv8i16.nxv8i8.i64(<vscale x 8 x i16>, <vscale x 8 x i8>, <vscale x 8 x i1>, i64, i64 immarg)
 
-declare target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4), <vscale x 8 x i16>, i64)
+declare target("riscv.vector.tuple", <vscale x 16 x i8>, 4) @llvm.riscv.vector.insert.triscv.vector.tuple_nxv16i8_4t.nxv8i16(target("riscv.vector.tuple", <vscale x 16 x i8>, 4), <vscale x 8 x i16>, i32)
 
 declare void @llvm.riscv.vsseg4.nxv8i16.i64(target("riscv.vector.tuple", <vscale x 16 x i8>, 4), ptr nocapture, i64, i64)
