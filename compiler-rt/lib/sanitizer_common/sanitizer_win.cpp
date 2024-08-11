@@ -1203,6 +1203,10 @@ void LogFullErrorReport(const char *buffer) {
 
 void InitializePlatformCommonFlags(CommonFlags *cf) {}
 
+// FIXME: implement on this platform.
+// Windows analog to such runtime would be auto-elevated binaries.
+bool ShouldTreatRuntimeSecurely() { return false; }
+
 }  // namespace __sanitizer
 
 #endif  // _WIN32
