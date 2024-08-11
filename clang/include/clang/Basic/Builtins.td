@@ -4740,7 +4740,7 @@ def HLSLRSqrt : LangBuiltin<"HLSL_LANG"> {
 def HLSLSign : LangBuiltin<"HLSL_LANG"> {
   let Spellings = ["__builtin_hlsl_elementwise_sign"];
   let Attributes = [NoThrow, Const];
-  let Prototype = "int(...)";
+  let Prototype = "void(...)";
 }
 
 // Builtins for XRay.
