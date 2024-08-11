@@ -54,6 +54,8 @@ def CExpression : NativeOpTrait<"emitc::CExpression">;
 def IntegerIndexOrOpaqueType : Type<CPred<"emitc::isIntegerIndexOrOpaqueType($_self)">,
 "integer, index or opaque type supported by EmitC">;
 def FloatIntegerIndexOrOpaqueType : AnyTypeOf<[EmitCFloatType, IntegerIndexOrOpaqueType]>;
+def SwitchOperandType : Type<CPred<"emitc::isSwitchOperandType($_self)">,
+"integer type for switch operation">;
 
 def EmitC_AddOp : EmitC_BinaryOp<"add", [CExpression]> {
   let summary = "Addition operation";
@@ -1188,7 +1190,7 @@ def EmitC_AssignOp : EmitC_Op<"assign", []> {
 }
 
 def EmitC_YieldOp : EmitC_Op<"yield",
-      [Pure, Terminator, ParentOneOf<["ExpressionOp", "IfOp", "ForOp"]>]> {
+      [Pure, Terminator, ParentOneOf<["ExpressionOp", "IfOp", "ForOp", "SwitchOp"]>]> {
   let summary = "Block termination operation";
   let description = [{
     The `emitc.yield` terminates its parent EmitC op's region, optionally yielding
@@ -1302,5 +1304,81 @@ def EmitC_SubscriptOp : EmitC_Op<"subscript", []> {
   let assemblyFormat = "$value `[` $indices `]` attr-dict `:` functional-type(operands, results)";
 }
 
+def EmitC_SwitchOp : EmitC_Op<"switch", [RecursiveMemoryEffects,
+    SingleBlockImplicitTerminator<"emitc::YieldOp">,
+    DeclareOpInterfaceMethods<RegionBranchOpInterface,
+                              ["getRegionInvocationBounds",
+                               "getEntrySuccessorRegions"]>]> {
+  let summary = "Switch operation";
+  let description = [{
+    The `emitc.switch` is a control-flow operation that branches to one of
+    the given regions based on the values of the argument and the cases.
+    The operand to a switch operation is a opaque or integral value.
+
+    The operation always has a "default" region and any number of case regions
+    denoted by integer constants. Control-flow transfers to the case region
+    whose constant value equals the value of the argument. If the argument does
+    not equal any of the case values, control-flow transfer to the "default"
+    region.
+
+    The operation does not return any value. Moreover, case regions and 
+    default region must be explicitly terminated using the `emitc.yield` operation.
+
+    Example:
+
+    ```mlir
+    // Example:
+    emitc.switch %0 : i32
+    case 2: {
+      %1 = emitc.call_opaque "func_b" () : () -> i32
+      emitc.yield
+    }
+    case 5: {
+      %2 = emitc.call_opaque "func_a" () : () -> i32
+      emitc.yield
+    }
+    default: {
+      %3 = "emitc.variable"(){value = 42.0 : f32} : () -> f32
+      emitc.call_opaque "func2" (%3) : (f32) -> ()
+      emitc.yield
+    }
+
+    // Output:
+    switch (v1) {
+    case (2): {
+      int32_t v2 = func_b();
+      break;
+    }
+    case (5): {
+      int32_t v3 = func_a();
+      break;
+    }
+    default: {
+      float v4 = 4.200000000e+01f;
+      func2(v4);
+      break;
+    }
+    ```
+  }];
+
+  let arguments = (ins SwitchOperandType:$arg, DenseI64ArrayAttr:$cases);
+  let results = (outs);
+  let regions = (region SizedRegion<1>:$defaultRegion,
+                        VariadicRegion<SizedRegion<1>>:$caseRegions);
+
+  let extraClassDeclaration = [{
+    /// Get the number of cases.
+    unsigned getNumCases();
+
+    /// Get the default region body.
+    Block &getDefaultBlock();
+
+    /// Get the body of a case region.
+    Block &getCaseBlock(unsigned idx);
+  }];
+
+  let hasCustomAssemblyFormat = 1;
+  let hasVerifier = 1;
+}
 
 #endif // MLIR_DIALECT_EMITC_IR_EMITC
