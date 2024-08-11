@@ -3558,6 +3558,62 @@ static Instruction *foldBitCeil(SelectInst &SI, IRBuilderBase &Builder) {
                                 Masked);
 }
 
+// This function tries to fold the following operations:
+//   (x < y) ? -1 : zext(x != y)
+//   (x > y) ? 1 : sext(x != y)
+//   (x >= y) ? zext(x != y) : -1
+// Into ucmp/scmp(x, y), where signedness is determined by the signedness
+// of the comparison in the original sequence
+Instruction *InstCombinerImpl::foldSelectToCmp(SelectInst &SI) {
+  Value *TV = SI.getTrueValue();
+  Value *FV = SI.getFalseValue();
+
+  ICmpInst::Predicate Pred;
+  Value *LHS, *RHS;
+  if (!match(SI.getCondition(), m_ICmp(Pred, m_Value(LHS), m_Value(RHS))))
+    return nullptr;
+
+  if (!LHS->getType()->isIntOrIntVectorTy())
+    return nullptr;
+
+  // Try to swap operands and the predicate. We need to be careful when doing
+  // so because two of the patterns have opposite predicates, so use the
+  // constant inside select to determine if swapping operands would be
+  // beneficial to us.
+  if ((ICmpInst::isGT(Pred) && match(TV, m_AllOnes())) ||
+      (ICmpInst::isLT(Pred) && match(TV, m_One())) || ICmpInst::isLE(Pred)) {
+    Pred = ICmpInst::getSwappedPredicate(Pred);
+    std::swap(LHS, RHS);
+  }
+
+  Intrinsic::ID IID =
+      ICmpInst::isSigned(Pred) ? Intrinsic::scmp : Intrinsic::ucmp;
+
+  CallInst *Intrinsic = nullptr;
+  ICmpInst::Predicate NEPred;
+  // (x < y) ? -1 : zext(x != y)
+  if (ICmpInst::isLT(Pred) && match(TV, m_AllOnes()) &&
+      match(FV, m_ZExt(m_c_ICmp(NEPred, m_Specific(LHS), m_Specific(RHS)))) &&
+      NEPred == ICmpInst::ICMP_NE)
+    Intrinsic = Builder.CreateIntrinsic(SI.getType(), IID, {LHS, RHS});
+
+  // (x > y) ? 1 : sext(x != y)
+  if (ICmpInst::isGT(Pred) && match(TV, m_One()) &&
+      match(FV, m_SExt(m_c_ICmp(NEPred, m_Specific(LHS), m_Specific(RHS)))) &&
+      NEPred == ICmpInst::ICMP_NE)
+    Intrinsic = Builder.CreateIntrinsic(SI.getType(), IID, {LHS, RHS});
+
+  // (x >= y) ? zext(x != y) : -1
+  if (ICmpInst::isGE(Pred) &&
+      match(TV, m_ZExt(m_c_ICmp(NEPred, m_Specific(LHS), m_Specific(RHS)))) &&
+      NEPred == ICmpInst::ICMP_NE && match(FV, m_AllOnes()))
+    Intrinsic = Builder.CreateIntrinsic(SI.getType(), IID, {LHS, RHS});
+
+  if (Intrinsic)
+    return replaceInstUsesWith(SI, Intrinsic);
+  return nullptr;
+}
+
 bool InstCombinerImpl::fmulByZeroIsZero(Value *MulVal, FastMathFlags FMF,
                                         const Instruction *CtxI) const {
   KnownFPClass Known = computeKnownFPClass(MulVal, FMF, fcNegative, CtxI);
@@ -4059,6 +4115,9 @@ Instruction *InstCombinerImpl::visitSelectInst(SelectInst &SI) {
     return &SI;
 
   if (Instruction *I = foldBitCeil(SI, Builder))
+    return I;
+
+  if (Instruction *I = foldSelectToCmp(SI))
     return I;
 
   // Fold:
