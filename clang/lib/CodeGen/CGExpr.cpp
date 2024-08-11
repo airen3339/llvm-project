@@ -1101,15 +1101,7 @@ static bool getGEPIndicesToField(CodeGenFunction &CGF, const RecordDecl *RD,
   return false;
 }
 
-/// This method is typically called in contexts where we can't generate
-/// side-effects, like in __builtin_dynamic_object_size. When finding
-/// expressions, only choose those that have either already been emitted or can
-/// be loaded without side-effects.
-///
-/// - \p FAMDecl: the \p Decl for the flexible array member. It may not be
-///   within the top-level struct.
-/// - \p CountDecl: must be within the same non-anonymous struct as \p FAMDecl.
-llvm::Value *CodeGenFunction::EmitLoadOfCountedByField(
+llvm::Value *CodeGenFunction::GetCountedByFieldExprGEP(
     const Expr *Base, const FieldDecl *FAMDecl, const FieldDecl *CountDecl) {
   const RecordDecl *RD = CountDecl->getParent()->getOuterLexicalRecordContext();
 
@@ -1142,28 +1134,25 @@ llvm::Value *CodeGenFunction::EmitLoadOfCountedByField(
     return nullptr;
 
   Indices.push_back(Builder.getInt32(0));
-  Res = Builder.CreateInBoundsGEP(
+  return Builder.CreateInBoundsGEP(
       ConvertType(QualType(RD->getTypeForDecl(), 0)), Res,
       RecIndicesTy(llvm::reverse(Indices)), "..counted_by.gep");
-
-  return Builder.CreateAlignedLoad(ConvertType(CountDecl->getType()), Res,
-                                   getIntAlign(), "..counted_by.load");
 }
 
-const FieldDecl *CodeGenFunction::FindCountedByField(const FieldDecl *FD) {
-  if (!FD)
-    return nullptr;
-
-  const auto *CAT = FD->getType()->getAs<CountAttributedType>();
-  if (!CAT)
-    return nullptr;
-
-  const auto *CountDRE = cast<DeclRefExpr>(CAT->getCountExpr());
-  const auto *CountDecl = CountDRE->getDecl();
-  if (const auto *IFD = dyn_cast<IndirectFieldDecl>(CountDecl))
-    CountDecl = IFD->getAnonField();
-
-  return dyn_cast<FieldDecl>(CountDecl);
+/// This method is typically called in contexts where we can't generate
+/// side-effects, like in __builtin_dynamic_object_size. When finding
+/// expressions, only choose those that have either already been emitted or can
+/// be loaded without side-effects.
+///
+/// - \p FAMDecl: the \p Decl for the flexible array member. It may not be
+///   within the top-level struct.
+/// - \p CountDecl: must be within the same non-anonymous struct as \p FAMDecl.
+llvm::Value *CodeGenFunction::EmitLoadOfCountedByField(
+    const Expr *Base, const FieldDecl *FAMDecl, const FieldDecl *CountDecl) {
+  if (llvm::Value *GEP = GetCountedByFieldExprGEP(Base, FAMDecl, CountDecl))
+    return Builder.CreateAlignedLoad(ConvertType(CountDecl->getType()), GEP,
+                                     getIntAlign(), "..counted_by.load");
+  return nullptr;
 }
 
 void CodeGenFunction::EmitBoundsCheck(const Expr *E, const Expr *Base,
@@ -4305,7 +4294,7 @@ LValue CodeGenFunction::EmitArraySubscriptExpr(const ArraySubscriptExpr *E,
           ME->isFlexibleArrayMemberLike(getContext(), StrictFlexArraysLevel) &&
           ME->getMemberDecl()->getType()->isCountAttributedType()) {
         const FieldDecl *FAMDecl = dyn_cast<FieldDecl>(ME->getMemberDecl());
-        if (const FieldDecl *CountFD = FindCountedByField(FAMDecl)) {
+        if (const FieldDecl *CountFD = FAMDecl->FindCountedByField()) {
           if (std::optional<int64_t> Diff =
                   getOffsetDifferenceInBits(*this, CountFD, FAMDecl)) {
             CharUnits OffsetDiff = CGM.getContext().toCharUnitsFromBits(*Diff);
