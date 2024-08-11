@@ -400,6 +400,22 @@ private:
   SubCommand *LookupSubCommand(StringRef Name, std::string &NearestString);
 };
 
+template <typename T, T TrueVal, T FalseVal>
+bool parseBool(Option &O, StringRef ArgName, StringRef Arg, T &Value) {
+  if (Arg == "" || Arg == "true" || Arg == "TRUE" || Arg == "True" ||
+      Arg == "1") {
+    Value = TrueVal;
+    return false;
+  }
+
+  if (Arg == "false" || Arg == "FALSE" || Arg == "False" || Arg == "0") {
+    Value = FalseVal;
+    return false;
+  }
+  return O.error("'" + Arg +
+                 "' is invalid value for boolean argument! Try 0 or 1");
+}
+
 } // namespace
 
 static ManagedStatic<CommandLineParser> GlobalParser;
@@ -1954,36 +1970,14 @@ void basic_parser_impl::printOptionName(const Option &O,
 //
 bool parser<bool>::parse(Option &O, StringRef ArgName, StringRef Arg,
                          bool &Value) {
-  if (Arg == "" || Arg == "true" || Arg == "TRUE" || Arg == "True" ||
-      Arg == "1") {
-    Value = true;
-    return false;
-  }
-
-  if (Arg == "false" || Arg == "FALSE" || Arg == "False" || Arg == "0") {
-    Value = false;
-    return false;
-  }
-  return O.error("'" + Arg +
-                 "' is invalid value for boolean argument! Try 0 or 1");
+  return parseBool<bool, true, false>(O, ArgName, Arg, Value);
 }
 
 // parser<boolOrDefault> implementation
 //
 bool parser<boolOrDefault>::parse(Option &O, StringRef ArgName, StringRef Arg,
                                   boolOrDefault &Value) {
-  if (Arg == "" || Arg == "true" || Arg == "TRUE" || Arg == "True" ||
-      Arg == "1") {
-    Value = BOU_TRUE;
-    return false;
-  }
-  if (Arg == "false" || Arg == "FALSE" || Arg == "False" || Arg == "0") {
-    Value = BOU_FALSE;
-    return false;
-  }
-
-  return O.error("'" + Arg +
-                 "' is invalid value for boolean argument! Try 0 or 1");
+  return parseBool<boolOrDefault, BOU_TRUE, BOU_FALSE>(O, ArgName, Arg, Value);
 }
 
 // parser<int> implementation
