@@ -993,7 +993,8 @@ PHINode *PHINode::create(Type *Ty, unsigned NumReservedValues,
                          Instruction *InsertBefore, Context &Ctx,
                          const Twine &Name) {
   llvm::PHINode *NewPHI = llvm::PHINode::Create(
-      Ty, NumReservedValues, Name, InsertBefore->getTopmostLLVMInstruction());
+      Ty, NumReservedValues, Name,
+      InsertBefore->getTopmostLLVMInstruction()->getIterator());
   return Ctx.createPHINode(NewPHI);
 }
 
