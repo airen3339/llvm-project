@@ -217,6 +217,11 @@ Bug Fixes to C++ Support
 - Clang now preserves the unexpanded flag in a lambda transform used for pack expansion. (#GH56852), (#GH85667),
   (#GH99877).
 - Fixed a bug when diagnosing ambiguous explicit specializations of constrained member functions.
+- Clang incorrectly considers a class with an anonymous union member to not be
+  const-default-constructible even if a union member has a default member initializer.
+  This is valid as per ``8.3`` in `Draft C++ Standard <https://eel.is/c++draft/dcl.init#general-8.3>`_.
+  The ``allowConstDefaultInit`` member function in ``CXXRecordDecl`` needs
+  special-case unions to handle the rule. (#GH95854).
 
 Bug Fixes to AST Handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^
