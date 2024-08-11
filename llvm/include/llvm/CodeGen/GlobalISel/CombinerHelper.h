@@ -903,6 +903,8 @@ public:
   // fold ((A-C1)+C2) -> (A+(C2-C1))
   bool matchFoldAMinusC1PlusC2(const MachineInstr &MI, BuildFnTy &MatchInfo);
 
+  bool matchCastOfInteger(const MachineInstr &CastMI, APInt &MatchInfo);
+
 private:
   /// Checks for legality of an indexed variant of \p LdSt.
   bool isIndexedLoadStoreLegal(GLoadStore &LdSt) const;
